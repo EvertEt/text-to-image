@@ -1,7 +1,7 @@
 checkpoint/*
 102flowers/*
 cub_birds_200_2011/*
-samples/main*
+samples/
 backup/
 *.txt
 *.pdf
@@ -9,3 +9,5 @@ backup/
 .DS_Store
 ._*
 train_txt2im_wrong_image.py
+*.pickle
+*.out

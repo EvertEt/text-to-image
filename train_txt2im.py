@@ -1,6 +1,6 @@
 #! /usr/bin/python
 # -*- coding: utf8 -*-
-
+print("Start")
 """ GAN-CLS """
 import tensorflow as tf
 import tensorlayer as tl
@@ -21,14 +21,20 @@ print("Loading data from pickle ...")
 import pickle
 with open("_vocab.pickle", 'rb') as f:
     vocab = pickle.load(f)
+print("Loaded 1")
 with open("_image_train.pickle", 'rb') as f:
+    print("Opened 2")
     _, images_train = pickle.load(f)
+print("Loaded 2")
 with open("_image_test.pickle", 'rb') as f:
     _, images_test = pickle.load(f)
+print("Loaded 3")
 with open("_n.pickle", 'rb') as f:
     n_captions_train, n_captions_test, n_captions_per_image, n_images_train, n_images_test = pickle.load(f)
+print("Loaded 4")
 with open("_caption.pickle", 'rb') as f:
     captions_ids_train, captions_ids_test = pickle.load(f)
+print("Loaded Done")
 # images_train_256 = np.array(images_train_256)
 # images_test_256 = np.array(images_test_256)
 images_train = np.array(images_train)
@@ -156,7 +162,7 @@ def main_train():
         # print(sample_sentence[i])
     sample_sentence = tl.prepro.pad_sequences(sample_sentence, padding='post')
 
-    n_epoch = 100 # 600
+    n_epoch = 600
     print_freq = 1
     n_batch_epoch = int(n_images_train / batch_size)
     # exit()
