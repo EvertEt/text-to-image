@@ -10,25 +10,33 @@ from tensorlayer.cost import *
 from utils import *
 
 ###======================== PREPARE DATA ====================================###
-print("Loading data from pickle ...")
 import pickle
 
+print("Opening Vocab")
 with open("_vocab.pickle", 'rb') as f:
+    print("Opened Vocab")
     vocab = pickle.load(f)
-print("Loaded 1")
+print("Loaded Vocab")
+print("Opening Train")
 with open("_image_train.pickle", 'rb') as f:
-    print("Opened 2")
+    print("Opened Train")
     _, images_train = pickle.load(f)
-print("Loaded 2")
+print("Loaded Train")
+print("Opening Test")
 with open("_image_test.pickle", 'rb') as f:
+    print("Opened Test")
     _, images_test = pickle.load(f)
-print("Loaded 3")
+print("Loaded Test")
+print("Opening n")
 with open("_n.pickle", 'rb') as f:
+    print("Opened n")
     n_captions_train, n_captions_test, n_captions_per_image, n_images_train, n_images_test = pickle.load(f)
-print("Loaded 4")
+print("Loaded n")
+print("Opening Caption")
 with open("_caption.pickle", 'rb') as f:
+    print("Opened Caption")
     captions_ids_train, captions_ids_test = pickle.load(f)
-print("Loaded Done")
+print("Loading Done")
 # images_train_256 = np.array(images_train_256)
 # images_test_256 = np.array(images_test_256)
 images_train = np.array(images_train)
@@ -48,7 +56,7 @@ save_dir = "checkpoint"
 
 
 def main_train():
-    ###======================== DEFIINE MODEL ===================================###
+    ###======================== DEFINE MODEL ===================================###
     t_real_image = tf.placeholder('float32', [batch_size, image_size, image_size, 3], name='real_image')
     t_wrong_image = tf.placeholder('float32', [batch_size, image_size, image_size, 3], name='wrong_image')
     t_real_caption = tf.placeholder(dtype=tf.int64, shape=[batch_size, None], name='real_caption_input')
