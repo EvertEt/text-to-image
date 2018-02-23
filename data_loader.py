@@ -1,18 +1,9 @@
-
-import os
-import re
-import time
 import nltk
-import re
-import string
-import tensorlayer as tl
+
 from utils import *
 
-
-dataset = '102flowers' #
-need_256 = True # set to True for stackGAN
-
-
+dataset = '102flowers'  #
+need_256 = True  # set to True for stackGAN
 
 if dataset == '102flowers':
     """
@@ -25,16 +16,16 @@ if dataset == '102flowers':
     VOC_FIR = cwd + '/vocab.txt'
 
     ## load captions
-    caption_sub_dir = load_folder_list( caption_dir )
+    caption_sub_dir = load_folder_list(caption_dir)
     captions_dict = {}
     processed_capts = []
-    for sub_dir in caption_sub_dir: # get caption file list
+    for sub_dir in caption_sub_dir:  # get caption file list
         with tl.ops.suppress_stdout():
             files = tl.files.load_file_list(path=sub_dir, regx='^image_[0-9]+\.txt')
             for i, f in enumerate(files):
                 file_dir = os.path.join(sub_dir, f)
                 key = int(re.findall('\d+', f)[0])
-                t = open(file_dir,'r')
+                t = open(file_dir, 'r')
                 lines = []
                 for line in t:
                     line = preprocess_caption(line)
@@ -53,13 +44,13 @@ if dataset == '102flowers':
 
     ## store all captions ids in list
     captions_ids = []
-    try: # python3
+    try:  # python3
         tmp = captions_dict.items()
-    except: # python3
+    except:  # python3
         tmp = captions_dict.iteritems()
     for key, value in tmp:
         for v in value:
-            captions_ids.append( [vocab.word_to_id(word) for word in nltk.tokenize.word_tokenize(v)] + [vocab.end_id])  # add END_ID
+            captions_ids.append([vocab.word_to_id(word) for word in nltk.tokenize.word_tokenize(v)] + [vocab.end_id])  # add END_ID
             # print(v)              # prominent purple stigma,petals are white inc olor
             # print(captions_ids)   # [[152, 19, 33, 15, 3, 8, 14, 719, 723]]
             # exit()
@@ -70,7 +61,7 @@ if dataset == '102flowers':
     img_capt = captions_dict[1][1]
     print("img_capt: %s" % img_capt)
     print("nltk.tokenize.word_tokenize(img_capt): %s" % nltk.tokenize.word_tokenize(img_capt))
-    img_capt_ids = [vocab.word_to_id(word) for word in nltk.tokenize.word_tokenize(img_capt)]#img_capt.split(' ')]
+    img_capt_ids = [vocab.word_to_id(word) for word in nltk.tokenize.word_tokenize(img_capt)]  # img_capt.split(' ')]
     print("img_capt_ids: %s" % img_capt_ids)
     print("id_to_word: %s" % [vocab.id_to_word(id) for id in img_capt_ids])
 
@@ -91,26 +82,26 @@ if dataset == '102flowers':
     images_256 = []
     for name in imgs_title_list:
         # print(name)
-        img_raw = scipy.misc.imread( os.path.join(img_dir, name) )
-        img = tl.prepro.imresize(img_raw, size=[64, 64])    # (64, 64, 3)
+        img_raw = scipy.misc.imread(os.path.join(img_dir, name))
+        img = tl.prepro.imresize(img_raw, size=[64, 64])  # (64, 64, 3)
         img = img.astype(np.float32)
         images.append(img)
         if need_256:
-            img = tl.prepro.imresize(img_raw, size=[256, 256]) # (256, 256, 3)
+            img = tl.prepro.imresize(img_raw, size=[256, 256])  # (256, 256, 3)
             img = img.astype(np.float32)
 
             images_256.append(img)
     # images = np.array(images)
     # images_256 = np.array(images_256)
-    print(" * loading and resizing took %ss" % (time.time()-s))
+    print(" * loading and resizing took %ss" % (time.time() - s))
 
     n_images = len(captions_dict)
     n_captions = len(captions_ids)
-    n_captions_per_image = len(lines) # 10
+    n_captions_per_image = len(lines)  # 10
 
     print("n_captions: %d n_images: %d n_captions_per_image: %d" % (n_captions, n_images, n_captions_per_image))
 
-    captions_ids_train, captions_ids_test = captions_ids[: 8000*n_captions_per_image], captions_ids[8000*n_captions_per_image :]
+    captions_ids_train, captions_ids_test = captions_ids[: 8000 * n_captions_per_image], captions_ids[8000 * n_captions_per_image:]
     images_train, images_test = images[:8000], images[8000:]
     if need_256:
         images_train_256, images_test_256 = images_256[:8000], images_256[8000:]
@@ -159,9 +150,12 @@ if dataset == '102flowers':
     # exit()
 
 import pickle
+
+
 def save_all(targets, file):
     with open(file, 'wb') as f:
         pickle.dump(targets, f)
+
 
 save_all(vocab, '_vocab.pickle')
 save_all((images_train_256, images_train), '_image_train.pickle')
