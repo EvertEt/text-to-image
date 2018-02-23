@@ -3,7 +3,7 @@ import nltk
 from utils import *
 
 dataset = '102flowers'  #
-need_256 = True  # set to True for stackGAN
+need_256 = False  # set to True for stackGAN
 
 if dataset == '102flowers':
     """
@@ -44,14 +44,11 @@ if dataset == '102flowers':
 
     ## store all captions ids in list
     captions_ids = []
-    try:  # python3
-        tmp = captions_dict.items()
-    except:  # python3
-        tmp = captions_dict.iteritems()
+    tmp = captions_dict.items()
     for key, value in tmp:
         for v in value:
             captions_ids.append([vocab.word_to_id(word) for word in nltk.tokenize.word_tokenize(v)] + [vocab.end_id])  # add END_ID
-            # print(v)              # prominent purple stigma,petals are white inc olor
+            # print(v)              # prominent purple stigma,petals are white in color
             # print(captions_ids)   # [[152, 19, 33, 15, 3, 8, 14, 719, 723]]
             # exit()
     captions_ids = np.asarray(captions_ids)
@@ -105,6 +102,8 @@ if dataset == '102flowers':
     images_train, images_test = images[:8000], images[8000:]
     if need_256:
         images_train_256, images_test_256 = images_256[:8000], images_256[8000:]
+    else:
+        images_train_256, images_test_256 = [], []
     n_images_train = len(images_train)
     n_images_test = len(images_test)
     n_captions_train = len(captions_ids_train)
