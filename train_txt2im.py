@@ -262,7 +262,7 @@ def main_train():
 def make_gif():
     import imageio
     filenames = tl.files.load_file_list('samples/step1_gan-cls', regx='^train_\d+0\.png', printable=False)
-    with imageio.get_writer('train.gif', mode='I', fps=0.2) as writer:
+    with imageio.get_writer('train.gif', mode='I', fps=0.1) as writer:
         for filename in filenames:
             image = imageio.imread('samples/step1_gan-cls/' + filename)
             writer.append_data(image)
