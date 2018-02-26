@@ -227,10 +227,6 @@ def main_train():
             errG, _ = sess.run([g_loss, g_optim], feed_dict={
                 t_real_caption: b_real_caption,
                 t_z: b_z})
-            # Update G twice
-            errG, _ = sess.run([g_loss, g_optim], feed_dict={
-                t_real_caption: b_real_caption,
-                t_z: b_z})
 
             print("Epoch: [%2d/%2d] [%4d/%4d] time: %4.4fs, d_loss: %.8f, g_loss: %.8f, rnn_loss: %.8f"
                   % (epoch, n_epoch, step, n_batch_epoch, time.time() - step_time, errD, errG, errRNN))
