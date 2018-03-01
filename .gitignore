@@ -3,7 +3,6 @@ checkpoint/*
 cub_birds_200_2011/*
 samples/
 backup/
-*.txt
 *.pdf
 *.pyc
 .DS_Store
@@ -11,3 +10,6 @@ backup/
 train_txt2im_wrong_image.py
 *.pickle
 *.out
+*.t7
+birds/images
+vocab.txt
