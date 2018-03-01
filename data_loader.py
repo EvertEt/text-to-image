@@ -2,7 +2,7 @@ import nltk
 
 from utils import *
 
-dataset = '102flowers'  #
+dataset = 'birds'
 need_256 = False  # set to True for stackGAN
 
 if dataset == '102flowers':
@@ -20,26 +20,25 @@ if dataset == '102flowers':
     captions_dict = {}
     processed_capts = []
     for sub_dir in caption_sub_dir:  # get caption file list
-        with tl.ops.suppress_stdout():
-            files = tl.files.load_file_list(path=sub_dir, regx='^image_[0-9]+\.txt')
-            for i, f in enumerate(files):
-                file_dir = os.path.join(sub_dir, f)
-                key = int(re.findall('\d+', f)[0])
-                t = open(file_dir, 'r')
-                lines = []
-                for line in t:
-                    line = preprocess_caption(line)
-                    lines.append(line)
-                    processed_capts.append(tl.nlp.process_sentence(line, start_word="<S>", end_word="</S>"))
-                assert len(lines) == 10, "Every flower image have 10 captions"
-                captions_dict[key] = lines
+        files = tl.files.load_file_list(path=sub_dir, regx='^image_[0-9]+\.txt', printable=False)
+        for i, f in enumerate(files):
+            file_dir = os.path.join(sub_dir, f)
+            key = int(re.findall('\d+', f)[0])
+            t = open(file_dir, 'r')
+            lines = []
+            for line in t:
+                line = preprocess_caption(line)
+                lines.append(line)
+                processed_capts.append(tl.nlp.process_sentence(line, start_word="<S>", end_word="</S>"))
+            assert len(lines) == 10, "Every flower image have 10 captions"
+            captions_dict[key] = lines
     print(" * %d x %d captions found " % (len(captions_dict), len(lines)))
 
     ## build vocab
-    if not os.path.isfile('vocab.txt'):
-        _ = tl.nlp.create_vocab(processed_capts, word_counts_output_file=VOC_FIR, min_word_count=1)
-    else:
-        print("WARNING: vocab.txt already exists")
+    # if not os.path.isfile('vocab.txt'):
+    _ = tl.nlp.create_vocab(processed_capts, word_counts_output_file=VOC_FIR, min_word_count=1)
+    # else:
+    #     print("WARNING: vocab.txt already exists")
     vocab = tl.nlp.Vocabulary(VOC_FIR, start_word="<S>", end_word="</S>", unk_word="<UNK>")
 
     ## store all captions ids in list
@@ -63,8 +62,7 @@ if dataset == '102flowers':
     print("id_to_word: %s" % [vocab.id_to_word(id) for id in img_capt_ids])
 
     ## load images
-    with tl.ops.suppress_stdout():  # get image files list
-        imgs_title_list = sorted(tl.files.load_file_list(path=img_dir, regx='^image_[0-9]+\.jpg'))
+    imgs_title_list = sorted(tl.files.load_file_list(path=img_dir, regx='^image_[0-9]+\.jpg', printable=False))
     print(" * %d images found, start loading and resizing ..." % len(imgs_title_list))
     s = time.time()
 
@@ -147,6 +145,106 @@ if dataset == '102flowers':
     # save_images(b_images, [8, 8], 'temp2.png')
     # # tl.visualize.images2d(b_images, second=5, saveable=True, name='temp2')
     # exit()
+
+if dataset == 'birds':
+    """
+    images.shape = [11788, 64, 64, 3]
+    captions_ids = [117880, any]
+    """
+    cwd = os.getcwd()
+    img_dir = os.path.join(cwd, 'birds/images')
+    caption_dir = os.path.join(cwd, 'birds/cub_icml')
+    VOC_FIR = cwd + '/vocab.txt'
+
+    ## load captions
+    caption_sub_dir = load_folder_list(caption_dir)
+    captions_dict = {}
+    processed_capts = []
+    for sub_dir in caption_sub_dir:  # get caption file list
+        files = tl.files.load_file_list(path=sub_dir, regx='\.txt$', printable=False)
+        for i, f in enumerate(files):
+            file_dir = os.path.join(sub_dir, f)
+            key = f
+            t = open(file_dir, 'r')
+            lines = []
+            for line in t:
+                line = preprocess_caption(line)
+                lines.append(line)
+                processed_capts.append(tl.nlp.process_sentence(line, start_word="<S>", end_word="</S>"))
+            assert len(lines) == 10, "Every image has 10 captions"
+            captions_dict[key] = lines
+    print(" * %d x %d captions found " % (len(captions_dict), len(lines)))
+
+    ## build vocab
+    # if not os.path.isfile('vocab.txt'):
+    _ = tl.nlp.create_vocab(processed_capts, word_counts_output_file=VOC_FIR, min_word_count=1)
+    # else:
+    #     print("WARNING: vocab.txt already exists")
+    vocab = tl.nlp.Vocabulary(VOC_FIR, start_word="<S>", end_word="</S>", unk_word="<UNK>")
+
+    ## store all captions ids in list
+    captions_ids = []
+    tmp = captions_dict.items()
+    for key, value in tmp:
+        for v in value:
+            captions_ids.append([vocab.word_to_id(word) for word in nltk.tokenize.word_tokenize(v)] + [vocab.end_id])  # add END_ID
+    captions_ids = np.asarray(captions_ids)
+    print(" * tokenized %d captions" % len(captions_ids))
+
+    ## check
+    # img_capt = captions_dict['Least_Auklet_0043_795067.txt'][1]
+    # print("img_capt: %s" % img_capt)
+    # print("nltk.tokenize.word_tokenize(img_capt): %s" % nltk.tokenize.word_tokenize(img_capt))
+    # img_capt_ids = [vocab.word_to_id(word) for word in nltk.tokenize.word_tokenize(img_capt)]  # img_capt.split(' ')]
+    # print("img_capt_ids: %s" % img_capt_ids)
+    # print("id_to_word: %s" % [vocab.id_to_word(id) for id in img_capt_ids])
+
+    ## load images
+    img_folders = load_folder_list(img_dir)
+    imgs_title_list = []
+    for img_folder in img_folders:
+        names = tl.files.load_file_list(path=img_folder, regx='^(?!\.).*\.jpg$', printable=False)
+        imgs_title_list.extend((img_folder + '/' + s for s in names))
+
+    imgs_title_list = sorted(imgs_title_list)
+    print(" * %d images found, start loading and resizing ..." % len(imgs_title_list))
+    s = time.time()
+
+    images = []
+    images_256 = []
+    for img_path in imgs_title_list:
+        # print(name)
+        img_raw = scipy.misc.imread(img_path, mode='RGB')
+        img = tl.prepro.imresize(img_raw, size=[64, 64])  # (64, 64, 3)
+        img = img.astype(np.float32)
+        images.append(img)
+        if need_256:
+            img = tl.prepro.imresize(img_raw, size=[256, 256])  # (256, 256, 3)
+            img = img.astype(np.float32)
+
+            images_256.append(img)
+    # images = np.array(images)
+    # images_256 = np.array(images_256)
+    print(" * loading and resizing took %ss" % (time.time() - s))
+
+    n_images = len(captions_dict)
+    n_captions = len(captions_ids)
+    n_captions_per_image = len(lines)  # 10
+
+    print("n_captions: %d n_images: %d n_captions_per_image: %d" % (n_captions, n_images, n_captions_per_image))
+
+    captions_ids_train, captions_ids_test = captions_ids[: 6000 * n_captions_per_image], captions_ids[6000 * n_captions_per_image:]
+    images_train, images_test = images[:6000], images[6000:]
+    if need_256:
+        images_train_256, images_test_256 = images_256[:6000], images_256[6000:]
+    else:
+        images_train_256, images_test_256 = [], []
+    n_images_train = len(images_train)
+    n_images_test = len(images_test)
+    n_captions_train = len(captions_ids_train)
+    n_captions_test = len(captions_ids_test)
+    print("n_images_train:%d n_captions_train:%d" % (n_images_train, n_captions_train))
+    print("n_images_test:%d  n_captions_test:%d" % (n_images_test, n_captions_test))
 
 import pickle
 
