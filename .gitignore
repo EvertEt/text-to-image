@@ -1,5 +1,6 @@
 checkpoint/*
 102flowers/*
+birds/*
 cub_birds_200_2011/*
 samples/
 backup/
@@ -12,4 +13,5 @@ train_txt2im_wrong_image.py
 *.out
 *.t7
 birds/images
-vocab.txt
+vocab_*.txt
+train.gif
