@@ -11,52 +11,72 @@ from model import *
 from tensorlayer.cost import *
 from utils import *
 
-###======================== PREPARE DATA ====================================###
 
-print("Opening Vocab")
-with open("_vocab.pickle", 'rb') as f:
-    print("Opened Vocab")
-    vocab = pickle.load(f)
-print("Loaded Vocab")
-print("Opening Train")
-with open("_image_train.pickle", 'rb') as f:
-    print("Opened Train")
-    _, images_train = pickle.load(f)
-print("Loaded Train")
-print("Opening Test")
-with open("_image_test.pickle", 'rb') as f:
-    print("Opened Test")
-    _, images_test = pickle.load(f)
-print("Loaded Test")
-print("Opening n")
-with open("_n.pickle", 'rb') as f:
-    print("Opened n")
-    n_captions_train, n_captions_test, n_captions_per_image, n_images_train, n_images_test = pickle.load(f)
-print("Loaded n")
-print("Opening Caption")
-with open("_caption.pickle", 'rb') as f:
-    print("Opened Caption")
-    captions_ids_train, captions_ids_test = pickle.load(f)
-print("Loading Done")
-# images_train_256 = np.array(images_train_256)
-# images_test_256 = np.array(images_test_256)
-images_train = np.array(images_train)
-images_test = np.array(images_test)
-
-# print(n_captions_train, n_captions_test)
-# exit()
-
-ni = int(np.ceil(np.sqrt(batch_size)))
-# os.system("mkdir samples")
-# os.system("mkdir samples/step1_gan-cls")
-# os.system("mkdir checkpoint")
-tl.files.exists_or_mkdir("samples/step1_gan-cls")
-# tl.files.exists_or_mkdir("samples/step_pretrain_encoder")
-tl.files.exists_or_mkdir("checkpoint")
-save_dir = "checkpoint"
+def make_gif():
+    import imageio
+    filenames = tl.files.load_file_list('samples/step1_gan-cls', regx='^train_\d+0\.png', printable=False)
+    with imageio.get_writer('train.gif', mode='I', fps=0.1) as writer:
+        for filename in filenames:
+            image = imageio.imread('samples/step1_gan-cls/' + filename)
+            writer.append_data(image)
 
 
-def main_train():
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('dataset', type=str, default='102flowers', help='102flowers | birds')
+
+    args = parser.parse_args()
+
+    dataset = args.dataset
+
+    ###======================== PREPARE DATA ====================================###
+
+    print('Opening Vocab')
+    with open('_vocab_' + dataset + '.pickle', 'rb') as f:
+        print('Opened Vocab')
+        vocab = pickle.load(f)
+    print('Loaded Vocab')
+    print('Opening Train')
+    with open('_image_train_' + dataset + '.pickle', 'rb') as f:
+        print('Opened Train')
+        _, images_train = pickle.load(f)
+    print('Loaded Train')
+    print('Opening Test')
+    with open('_image_test_' + dataset + '.pickle', 'rb') as f:
+        print('Opened Test')
+        _, images_test = pickle.load(f)
+    print('Loaded Test')
+    print('Opening n')
+    with open('_n_' + dataset + '.pickle', 'rb') as f:
+        print('Opened n')
+        n_captions_train, n_captions_test, n_captions_per_image, n_images_train, n_images_test = pickle.load(f)
+    print('Loaded n')
+    print('Opening Caption')
+    with open('_caption_' + dataset + '.pickle', 'rb') as f:
+        print('Opened Caption')
+        captions_ids_train, captions_ids_test = pickle.load(f)
+    print('Loading Done')
+    # images_train_256 = np.array(images_train_256)
+    # images_test_256 = np.array(images_test_256)
+    images_train = np.array(images_train)
+    images_test = np.array(images_test)
+
+    # print(n_captions_train, n_captions_test)
+    # exit()
+
+    ni = int(np.ceil(np.sqrt(batch_size)))
+    # os.system("mkdir samples")
+    # os.system("mkdir samples/step1_gan-cls")
+    # os.system("mkdir checkpoint")
+    tl.files.exists_or_mkdir("samples/step1_gan-cls_" + dataset)
+    # tl.files.exists_or_mkdir("samples/step_pretrain_encoder")
+    tl.files.exists_or_mkdir("checkpoint" + dataset)
+    save_dir = "checkpoint" + dataset
+
+
     ###======================== DEFINE MODEL ===================================###
     t_real_image = tf.placeholder('float32', [batch_size, image_size, image_size, 3], name='real_image')
     t_wrong_image = tf.placeholder('float32', [batch_size, image_size, image_size, 3], name='wrong_image')
@@ -147,22 +167,24 @@ def main_train():
     sample_size = batch_size
     sample_seed = np.random.normal(loc=0.0, scale=1.0, size=(sample_size, z_dim)).astype(np.float32)
     # sample_seed = np.random.uniform(low=-1, high=1, size=(sample_size, z_dim)).astype(np.float32)
-    # sample_sentence = ["the flower shown has yellow anther red pistil and bright red petals."] * int(sample_size / ni) + \
-    #                   ["this flower has petals that are yellow, white and purple and has dark lines"] * int(sample_size / ni) + \
-    #                   ["the petals on this flower are white with a yellow center"] * int(sample_size / ni) + \
-    #                   ["this flower has a lot of small round pink petals."] * int(sample_size / ni) + \
-    #                   ["this flower is orange in color, and has petals that are ruffled and rounded."] * int(sample_size / ni) + \
-    #                   ["the flower has yellow petals and the center of it is brown."] * int(sample_size / ni) + \
-    #                   ["this flower has petals that are blue and white."] * int(sample_size / ni) + \
-    #                   ["these white flowers have petals that start off white in color and end in a white towards the tips."] * int(sample_size / ni)
-    sample_sentence = ["this vibrant red bird has a pointed black beak."] * int(sample_size / ni) + \
-                      ["this bird is yellowish orange with black wings"] * int(sample_size / ni) + \
-                      ["the bright blue bird has a white colored belly"] * int(sample_size / ni) + \
-                      ["this vibrant red bird has a pointed black beak."] * int(sample_size / ni) + \
-                      ["this bird is yellowish orange with black wings"] * int(sample_size / ni) + \
-                      ["the bright blue bird has a white colored belly"] * int(sample_size / ni) + \
-                      ["this vibrant red bird has a pointed black beak."] * int(sample_size / ni) + \
-                      ["this bird is yellowish orange with black wings"] * int(sample_size / ni)
+    if dataset == '102flowers':
+        sample_sentence = ["the flower shown has yellow anther red pistil and bright red petals."] * int(sample_size / ni) + \
+                          ["this flower has petals that are yellow, white and purple and has dark lines"] * int(sample_size / ni) + \
+                          ["the petals on this flower are white with a yellow center"] * int(sample_size / ni) + \
+                          ["this flower has a lot of small round pink petals."] * int(sample_size / ni) + \
+                          ["this flower is orange in color, and has petals that are ruffled and rounded."] * int(sample_size / ni) + \
+                          ["the flower has yellow petals and the center of it is brown."] * int(sample_size / ni) + \
+                          ["this flower has petals that are blue and white."] * int(sample_size / ni) + \
+                          ["these white flowers have petals that start off white in color and end in a white towards the tips."] * int(sample_size / ni)
+    else:
+        sample_sentence = ["this vibrant red bird has a pointed black beak."] * int(sample_size / ni) + \
+                          ["this bird is yellowish orange with black wings"] * int(sample_size / ni) + \
+                          ["the bright blue bird has a white colored belly"] * int(sample_size / ni) + \
+                          ["this vibrant red bird has a pointed black beak."] * int(sample_size / ni) + \
+                          ["this bird is yellowish orange with black wings"] * int(sample_size / ni) + \
+                          ["the bright blue bird has a white colored belly"] * int(sample_size / ni) + \
+                          ["this vibrant red bird has a pointed black beak."] * int(sample_size / ni) + \
+                          ["this bird is yellowish orange with black wings"] * int(sample_size / ni)
 
     # sample_sentence = captions_ids_test[0:sample_size]
     for i, sentence in enumerate(sample_sentence):
@@ -266,35 +288,4 @@ def main_train():
         #     sess.run(tf.initialize_variables(adam_vars))
         #     print("Re-initialize Adam")
 
-
-def make_gif():
-    import imageio
-    filenames = tl.files.load_file_list('samples/step1_gan-cls', regx='^train_\d+0\.png', printable=False)
-    with imageio.get_writer('train.gif', mode='I', fps=0.1) as writer:
-        for filename in filenames:
-            image = imageio.imread('samples/step1_gan-cls/' + filename)
-            writer.append_data(image)
-
-
-if __name__ == '__main__':
-    import argparse
-
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument('--mode', type=str, default="train",
-                        help='train, train_encoder, translation')
-
-    args = parser.parse_args()
-
-    if args.mode == "train":
-        main_train()
-        make_gif()
-
-    ## you would not use this part, unless you want to try style transfer on GAN-CLS paper
-    # elif args.mode == "train_encoder":
-    #     main_train_encoder()
-    #
-    # elif args.mode == "translation":
-    #     main_transaltion()
-
-#
+    make_gif()
