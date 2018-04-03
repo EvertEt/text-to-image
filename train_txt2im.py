@@ -11,16 +11,6 @@ from model import *
 from tensorlayer.cost import *
 from utils import *
 
-
-def make_gif():
-    import imageio
-    filenames = tl.files.load_file_list('samples/step1_gan-cls', regx='^train_\d+0\.png', printable=False)
-    with imageio.get_writer('train.gif', mode='I', fps=0.1) as writer:
-        for filename in filenames:
-            image = imageio.imread('samples/step1_gan-cls/' + filename)
-            writer.append_data(image)
-
-
 if __name__ == '__main__':
     import argparse
 
@@ -31,6 +21,16 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     dataset = args.dataset
+
+
+    def make_gif():
+        import imageio
+        filenames = tl.files.load_file_list('samples/step1_gan-cls_' + dataset, regx='^train_\d+0\.png', printable=False)
+        with imageio.get_writer('train.gif', mode='I', fps=0.1) as writer:
+            for filename in filenames:
+                image = imageio.imread('samples/step1_gan-cls_' + dataset + '/' + filename)
+                writer.append_data(image)
+
 
     ###======================== PREPARE DATA ====================================###
 
@@ -73,9 +73,8 @@ if __name__ == '__main__':
     # os.system("mkdir checkpoint")
     tl.files.exists_or_mkdir("samples/step1_gan-cls_" + dataset)
     # tl.files.exists_or_mkdir("samples/step_pretrain_encoder")
-    tl.files.exists_or_mkdir("checkpoint" + dataset)
-    save_dir = "checkpoint" + dataset
-
+    tl.files.exists_or_mkdir("checkpoint_" + dataset)
+    save_dir = "checkpoint_" + dataset
 
     ###======================== DEFINE MODEL ===================================###
     t_real_image = tf.placeholder('float32', [batch_size, image_size, image_size, 3], name='real_image')
@@ -84,12 +83,13 @@ if __name__ == '__main__':
     t_wrong_caption = tf.placeholder(dtype=tf.int64, shape=[batch_size, None], name='wrong_caption_input')
     t_z = tf.placeholder(tf.float32, [batch_size, z_dim], name='z_noise')
 
-    ## training inference for text-to-image mapping
-    net_cnn = cnn_encoder(t_real_image, is_train=True, reuse=False)
-    x = net_cnn.outputs
-    v = rnn_embed(t_real_caption, is_train=True, reuse=False).outputs
-    x_w = cnn_encoder(t_wrong_image, is_train=True, reuse=True).outputs
-    v_w = rnn_embed(t_wrong_caption, is_train=True, reuse=True).outputs
+    with tl.ops.suppress_stdout():
+        ## training inference for text-to-image mapping
+        net_cnn = cnn_encoder(t_real_image, is_train=True, reuse=False)
+        x = net_cnn.outputs
+        v = rnn_embed(t_real_caption, is_train=True, reuse=False).outputs
+        x_w = cnn_encoder(t_wrong_image, is_train=True, reuse=True).outputs
+        v_w = rnn_embed(t_wrong_caption, is_train=True, reuse=True).outputs
 
     alpha = 0.2  # margin alpha
     rnn_loss = tf.reduce_mean(tf.maximum(0., alpha - cosine_similarity(x, v) + cosine_similarity(x, v_w))) + \
@@ -99,43 +99,43 @@ if __name__ == '__main__':
     generator_txt2img = model.generator_txt2img_resnet
     discriminator_txt2img = model.discriminator_txt2img_resnet
 
-    net_rnn = rnn_embed(t_real_caption, is_train=False, reuse=True)
-    net_fake_image, _ = generator_txt2img(t_z,
-                                          net_rnn.outputs,
-                                          is_train=True, reuse=False, batch_size=batch_size)
-    # + tf.random_normal(shape=net_rnn.outputs.get_shape(), mean=0, stddev=0.02), # NOISE ON RNN
-    net_d, disc_fake_image_logits = discriminator_txt2img(
-        net_fake_image.outputs, net_rnn.outputs, is_train=True, reuse=False)
-    _, disc_real_image_logits = discriminator_txt2img(
-        t_real_image, net_rnn.outputs, is_train=True, reuse=True)
-    _, disc_mismatch_logits = discriminator_txt2img(
-        # t_wrong_image,
-        t_real_image,
-        # net_rnn.outputs,
-        rnn_embed(t_wrong_caption, is_train=False, reuse=True).outputs,
-        is_train=True, reuse=True)
+    with tl.ops.suppress_stdout():
+        net_rnn = rnn_embed(t_real_caption, is_train=False, reuse=True)
+        net_fake_image, _ = generator_txt2img(t_z,
+                                              net_rnn.outputs,
+                                              is_train=True, reuse=False, batch_size=batch_size)
+        # + tf.random_normal(shape=net_rnn.outputs.get_shape(), mean=0, stddev=0.02), # NOISE ON RNN
+        net_d, disc_fake_image_logits = discriminator_txt2img(
+            net_fake_image.outputs, net_rnn.outputs, is_train=True, reuse=False)
+        _, disc_real_image_logits = discriminator_txt2img(
+            t_real_image, net_rnn.outputs, is_train=True, reuse=True)
+        _, disc_mismatch_logits = discriminator_txt2img(
+            # t_wrong_image,
+            t_real_image,
+            # net_rnn.outputs,
+            rnn_embed(t_wrong_caption, is_train=False, reuse=True).outputs,
+            is_train=True, reuse=True)
+        print(4)
+        ## testing inference for txt2img
+        net_g, _ = generator_txt2img(t_z,
+                                     rnn_embed(t_real_caption, is_train=False, reuse=True).outputs,
+                                     is_train=False, reuse=True, batch_size=batch_size)
 
-    ## testing inference for txt2img
-    net_g, _ = generator_txt2img(t_z,
-                                 rnn_embed(t_real_caption, is_train=False, reuse=True).outputs,
-                                 is_train=False, reuse=True, batch_size=batch_size)
-
-    d_loss1 = tl.cost.sigmoid_cross_entropy(disc_real_image_logits, tf.ones_like(disc_real_image_logits), name='d1')
-    d_loss2 = tl.cost.sigmoid_cross_entropy(disc_mismatch_logits, tf.zeros_like(disc_mismatch_logits), name='d2')
-    d_loss3 = tl.cost.sigmoid_cross_entropy(disc_fake_image_logits, tf.zeros_like(disc_fake_image_logits), name='d3')
-    d_loss = d_loss1 + (d_loss2 + d_loss3) * 0.5
-    g_loss = tl.cost.sigmoid_cross_entropy(disc_fake_image_logits, tf.ones_like(disc_fake_image_logits), name='g')
+        d_loss1 = tl.cost.sigmoid_cross_entropy(disc_real_image_logits, tf.ones_like(disc_real_image_logits), name='d1')
+        d_loss2 = tl.cost.sigmoid_cross_entropy(disc_mismatch_logits, tf.zeros_like(disc_mismatch_logits), name='d2')
+        d_loss3 = tl.cost.sigmoid_cross_entropy(disc_fake_image_logits, tf.zeros_like(disc_fake_image_logits), name='d3')
+        d_loss = d_loss1 + (d_loss2 + d_loss3) * 0.5
+        g_loss = tl.cost.sigmoid_cross_entropy(disc_fake_image_logits, tf.ones_like(disc_fake_image_logits), name='g')
 
     ####======================== DEFINE TRAIN OPTS ==============================###
     lr = 0.0002
     lr_decay = 0.5  # decay factor for adam, https://github.com/reedscot/icml2016/blob/master/main_cls_int.lua  https://github.com/reedscot/icml2016/blob/master/scripts/train_flowers.sh
     decay_every = 100  # https://github.com/reedscot/icml2016/blob/master/main_cls.lua
     beta1 = 0.5
-
-    cnn_vars = tl.layers.get_variables_with_name('cnn', True, True)
-    rnn_vars = tl.layers.get_variables_with_name('rnn', True, True)
-    d_vars = tl.layers.get_variables_with_name('discriminator', True, True)
-    g_vars = tl.layers.get_variables_with_name('generator', True, True)
+    cnn_vars = tl.layers.get_variables_with_name('cnn', True)
+    rnn_vars = tl.layers.get_variables_with_name('rnn', True)
+    d_vars = tl.layers.get_variables_with_name('discriminator', True)
+    g_vars = tl.layers.get_variables_with_name('generator', True)
 
     with tf.variable_scope('learning_rate'):
         lr_v = tf.Variable(lr, trainable=False)
@@ -180,11 +180,11 @@ if __name__ == '__main__':
         sample_sentence = ["this vibrant red bird has a pointed black beak."] * int(sample_size / ni) + \
                           ["this bird is yellowish orange with black wings"] * int(sample_size / ni) + \
                           ["the bright blue bird has a white colored belly"] * int(sample_size / ni) + \
-                          ["this vibrant red bird has a pointed black beak."] * int(sample_size / ni) + \
-                          ["this bird is yellowish orange with black wings"] * int(sample_size / ni) + \
-                          ["the bright blue bird has a white colored belly"] * int(sample_size / ni) + \
-                          ["this vibrant red bird has a pointed black beak."] * int(sample_size / ni) + \
-                          ["this bird is yellowish orange with black wings"] * int(sample_size / ni)
+                          ["this small bird has a pink breast and crown, and black primaries and secondaries."] * int(sample_size / ni) + \
+                          ["this magnificent fellow is almost all black with a red crest, and white cheek patch."] * int(sample_size / ni) + \
+                          ["an all black bird with a distinct thick, rounded bill"] * int(sample_size / ni) + \
+                          ["the gray bird has a light grey head and grey webbed feet."] * int(sample_size / ni) + \
+                          ["This blue bird has white wings."] * int(sample_size / ni)
 
     # sample_sentence = captions_ids_test[0:sample_size]
     for i, sentence in enumerate(sample_sentence):
@@ -268,7 +268,7 @@ if __name__ == '__main__':
                 t_z: sample_seed})
 
             # img_gen = threading_data(img_gen, prepro_img, mode='rescale')
-            save_images(img_gen, [ni, ni], 'samples/step1_gan-cls/train_{:02d}.png'.format(epoch))
+            save_images(img_gen, [ni, ni], 'samples/step1_gan-cls_' + dataset + '/train_{:02d}.png'.format(epoch))
 
         ## save model
         if (epoch != 0) and (epoch % 10) == 0:

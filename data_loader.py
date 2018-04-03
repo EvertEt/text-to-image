@@ -197,7 +197,7 @@ if __name__ == '__main__':
         print(" * tokenized %d captions" % len(captions_ids))
 
         ## check
-        img_capt = captions_dict['/home/evert/Documents/school/1718/thesis/t2i/birds/cub_icml/001.Black_footed_Albatross/Black_Footed_Albatross_0001_796111.txt'][0]
+        img_capt = captions_dict[list(captions_dict.keys())[0]][0]
         print("img_capt: %s" % img_capt)
         print("nltk.tokenize.word_tokenize(img_capt): %s" % nltk.tokenize.word_tokenize(img_capt))
         img_capt_ids = [vocab.word_to_id(word) for word in nltk.tokenize.word_tokenize(img_capt)]  # img_capt.split(' ')]
