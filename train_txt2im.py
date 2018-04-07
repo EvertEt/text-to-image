@@ -115,7 +115,6 @@ if __name__ == '__main__':
             # net_rnn.outputs,
             rnn_embed(t_wrong_caption, is_train=False, reuse=True).outputs,
             is_train=True, reuse=True)
-        print(4)
         ## testing inference for txt2img
         net_g, _ = generator_txt2img(t_z,
                                      rnn_embed(t_real_caption, is_train=False, reuse=True).outputs,
@@ -153,15 +152,15 @@ if __name__ == '__main__':
     tl.layers.initialize_global_variables(sess)
 
     # load the latest checkpoints
-    net_rnn_name = os.path.join(save_dir, 'net_rnn.npz')
-    net_cnn_name = os.path.join(save_dir, 'net_cnn.npz')
-    net_g_name = os.path.join(save_dir, 'net_g.npz')
-    net_d_name = os.path.join(save_dir, 'net_d.npz')
+    # net_rnn_name = os.path.join(save_dir, 'net_rnn.npz')
+    # net_cnn_name = os.path.join(save_dir, 'net_cnn.npz')
+    # net_g_name = os.path.join(save_dir, 'net_g.npz')
+    # net_d_name = os.path.join(save_dir, 'net_d.npz')
 
-    load_and_assign_npz(sess=sess, name=net_rnn_name, model=net_rnn)
-    load_and_assign_npz(sess=sess, name=net_cnn_name, model=net_cnn)
-    load_and_assign_npz(sess=sess, name=net_g_name, model=net_g)
-    load_and_assign_npz(sess=sess, name=net_d_name, model=net_d)
+    # load_and_assign_npz(sess=sess, name=net_rnn_name, model=net_rnn)
+    # load_and_assign_npz(sess=sess, name=net_cnn_name, model=net_cnn)
+    # load_and_assign_npz(sess=sess, name=net_g_name, model=net_g)
+    # load_and_assign_npz(sess=sess, name=net_d_name, model=net_d)
 
     ## seed for generation, z and sentence ids
     sample_size = batch_size
@@ -181,7 +180,7 @@ if __name__ == '__main__':
                           ["this bird is yellowish orange with black wings"] * int(sample_size / ni) + \
                           ["the bright blue bird has a white colored belly"] * int(sample_size / ni) + \
                           ["this small bird has a pink breast and crown, and black primaries and secondaries."] * int(sample_size / ni) + \
-                          ["this magnificent fellow is almost all black with a red crest, and white cheek patch."] * int(sample_size / ni) + \
+                          ["This birds is completely blue."] * int(sample_size / ni) + \
                           ["an all black bird with a distinct thick, rounded bill"] * int(sample_size / ni) + \
                           ["the gray bird has a light grey head and grey webbed feet."] * int(sample_size / ni) + \
                           ["This blue bird has white wings."] * int(sample_size / ni)

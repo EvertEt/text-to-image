@@ -237,10 +237,10 @@ if __name__ == '__main__':
 
         print("n_captions: %d n_images: %d n_captions_per_image: %d" % (n_captions, n_images, n_captions_per_image))
 
-        captions_ids_train, captions_ids_test = captions_ids[: 8000 * n_captions_per_image], captions_ids[8000 * n_captions_per_image:]
-        images_train, images_test = images[:8000], images[8000:]  # TODO increase number
+        captions_ids_train, captions_ids_test = captions_ids[:11000 * n_captions_per_image], captions_ids[11000 * n_captions_per_image:]
+        images_train, images_test = images[:11000], images[11000:]
         if need_256:
-            images_train_256, images_test_256 = images_256[:8000], images_256[8000:]
+            images_train_256, images_test_256 = images_256[:11000], images_256[11000:]
         else:
             images_train_256, images_test_256 = [], []
         n_images_train = len(images_train)
