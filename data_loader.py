@@ -160,26 +160,31 @@ if __name__ == '__main__':
         """
         cwd = os.getcwd()
         img_dir = os.path.join(cwd, 'birds/images')
+        data_dir = os.path.join(cwd, 'birds')
         caption_dir = os.path.join(cwd, 'birds/cub_icml')
         VOC_FIR = cwd + '/vocab_birds.txt'
 
+        img_mapping = {}
+        with open(data_dir + '/images.txt', 'r') as t:
+            lines = []
+            for line in t:
+                split = line.split(' ')
+                assert len(split) == 2, 'split images.txt'
+                img_mapping[int(split[0])] = split[1].rstrip('\n')
+
         ## load captions
-        caption_sub_dir = sorted(load_folder_list(caption_dir))
         captions_dict = {}
         processed_capts = []
-        for sub_dir in caption_sub_dir:  # get caption file list
-            files = sorted(tl.files.load_file_list(path=sub_dir, regx='\.txt$', printable=False))
-            for i, f in enumerate(files):
-                file_dir = os.path.join(sub_dir, f)
-                key = file_dir
-                with open(file_dir, 'r') as t:
-                    lines = []
-                    for line in t:
-                        line = preprocess_caption(line)
-                        lines.append(line)
-                        processed_capts.append(tl.nlp.process_sentence(line, start_word="<S>", end_word="</S>"))
-                    assert len(lines) == 10, "Every image has 10 captions"
-                    captions_dict[key] = lines
+        for key, value in img_mapping.items():
+            file_dir = os.path.join(caption_dir, value[:-3] + 'txt')
+            with open(file_dir, 'r') as t:
+                lines = []
+                for line in t:
+                    line = preprocess_caption(line)
+                    lines.append(line)
+                    processed_capts.append(tl.nlp.process_sentence(line, start_word="<S>", end_word="</S>"))
+                assert len(lines) == 10, "Every image has 10 captions"
+                captions_dict[key] = lines
 
         print(" * %d x %d captions found " % (len(captions_dict), len(lines)))
 
@@ -197,27 +202,23 @@ if __name__ == '__main__':
         print(" * tokenized %d captions" % len(captions_ids))
 
         ## check
-        img_capt = captions_dict[list(captions_dict.keys())[0]][0]
+        img_capt = captions_dict[1][1]
         print("img_capt: %s" % img_capt)
         print("nltk.tokenize.word_tokenize(img_capt): %s" % nltk.tokenize.word_tokenize(img_capt))
         img_capt_ids = [vocab.word_to_id(word) for word in nltk.tokenize.word_tokenize(img_capt)]  # img_capt.split(' ')]
         print("img_capt_ids: %s" % img_capt_ids)
         print("id_to_word: %s" % [vocab.id_to_word(id) for id in img_capt_ids])
 
-        ## load images
-        img_folders = sorted(load_folder_list(img_dir))
-        imgs_title_list = []
-        for img_folder in img_folders:
-            names = tl.files.load_file_list(path=img_folder, regx='^(?!\.).*\.jpg$', printable=False)
-            imgs_title_list.extend((img_folder + '/' + s for s in names))
-
-        imgs_title_list = sorted(imgs_title_list)
-        print(" * %d images found, start loading and resizing ..." % len(imgs_title_list))
+        # Images
+        print(" * %d images found, start loading and resizing ..." % len(img_mapping))
         s = time.time()
 
         images = []
         images_256 = []
-        for img_path in imgs_title_list:
+        imgs_title_list = sorted(img_mapping.items())
+        for key, img_path_relative in imgs_title_list:
+            img_path = os.path.join(img_dir, img_path_relative)
+
             img_raw = scipy.misc.imread(img_path, mode='RGB')
             img = tl.prepro.imresize(img_raw, size=[64, 64])  # (64, 64, 3)
             img = img.astype(np.float32)
