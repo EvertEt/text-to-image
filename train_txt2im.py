@@ -152,10 +152,10 @@ if __name__ == '__main__':
     tl.layers.initialize_global_variables(sess)
 
     # load the latest checkpoints
-    # net_rnn_name = os.path.join(save_dir, 'net_rnn.npz')
-    # net_cnn_name = os.path.join(save_dir, 'net_cnn.npz')
-    # net_g_name = os.path.join(save_dir, 'net_g.npz')
-    # net_d_name = os.path.join(save_dir, 'net_d.npz')
+    net_rnn_name = os.path.join(save_dir, 'net_rnn.npz')
+    net_cnn_name = os.path.join(save_dir, 'net_cnn.npz')
+    net_g_name = os.path.join(save_dir, 'net_g.npz')
+    net_d_name = os.path.join(save_dir, 'net_d.npz')
 
     # load_and_assign_npz(sess=sess, name=net_rnn_name, model=net_rnn)
     # load_and_assign_npz(sess=sess, name=net_cnn_name, model=net_cnn)
