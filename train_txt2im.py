@@ -1,14 +1,15 @@
 #! /usr/bin/python
 # -*- coding: utf8 -*-
 """ GAN-CLS """
-
+import logging
 import pickle
+import time
 
 import nltk
+from tensorlayer.cost import *
 
 import model
 from model import *
-from tensorlayer.cost import *
 from utils import *
 
 if __name__ == '__main__':
@@ -21,6 +22,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     dataset = args.dataset
+
+    logger = logging.getLogger()
 
 
     def make_gif():
@@ -58,23 +61,24 @@ if __name__ == '__main__':
     with open('_caption_' + dataset + '.pickle', 'rb') as f:
         print('Opened Caption')
         captions_ids_train, captions_ids_test = pickle.load(f)
+    print('Loaded Caption')
+    if dataset == 'birds':
+        print('Opening BB')
+        with open('_bb_' + dataset + '.pickle', 'rb') as f:
+            print('Opened BB')
+            bb_train, bb_test = pickle.load(f)
+        print('Loaded BB')
     print('Loading Done')
     # images_train_256 = np.array(images_train_256)
     # images_test_256 = np.array(images_test_256)
     images_train = np.array(images_train)
     images_test = np.array(images_test)
 
-    # print(n_captions_train, n_captions_test)
-    # exit()
-
     ni = int(np.ceil(np.sqrt(batch_size)))
-    # os.system("mkdir samples")
-    # os.system("mkdir samples/step1_gan-cls")
-    # os.system("mkdir checkpoint")
-    tl.files.exists_or_mkdir("samples/step1_gan-cls_" + dataset)
-    # tl.files.exists_or_mkdir("samples/step_pretrain_encoder")
-    tl.files.exists_or_mkdir("checkpoint_" + dataset)
-    save_dir = "checkpoint_" + dataset
+
+    tl.files.exists_or_mkdir('samples/step1_gan-cls_' + dataset)
+    save_dir = 'checkpoint_' + dataset
+    tl.files.exists_or_mkdir(save_dir)
 
     ###======================== DEFINE MODEL ===================================###
     t_real_image = tf.placeholder('float32', [batch_size, image_size, image_size, 3], name='real_image')
@@ -83,13 +87,13 @@ if __name__ == '__main__':
     t_wrong_caption = tf.placeholder(dtype=tf.int64, shape=[batch_size, None], name='wrong_caption_input')
     t_z = tf.placeholder(tf.float32, [batch_size, z_dim], name='z_noise')
 
-    with tl.ops.suppress_stdout():
-        ## training inference for text-to-image mapping
-        net_cnn = cnn_encoder(t_real_image, is_train=True, reuse=False)
-        x = net_cnn.outputs
-        v = rnn_embed(t_real_caption, is_train=True, reuse=False).outputs
-        x_w = cnn_encoder(t_wrong_image, is_train=True, reuse=True).outputs
-        v_w = rnn_embed(t_wrong_caption, is_train=True, reuse=True).outputs
+    ## training inference for text-to-image mapping
+    logging.disable(logging.CRITICAL)
+    net_cnn = cnn_encoder(t_real_image, is_train=True, reuse=False)
+    x = net_cnn.outputs
+    v = rnn_embed(t_real_caption, is_train=True, reuse=False).outputs
+    x_w = cnn_encoder(t_wrong_image, is_train=True, reuse=True).outputs
+    v_w = rnn_embed(t_wrong_caption, is_train=True, reuse=True).outputs
 
     alpha = 0.2  # margin alpha
     rnn_loss = tf.reduce_mean(tf.maximum(0., alpha - cosine_similarity(x, v) + cosine_similarity(x, v_w))) + \
@@ -99,32 +103,33 @@ if __name__ == '__main__':
     generator_txt2img = model.generator_txt2img_resnet
     discriminator_txt2img = model.discriminator_txt2img_resnet
 
-    with tl.ops.suppress_stdout():
-        net_rnn = rnn_embed(t_real_caption, is_train=False, reuse=True)
-        net_fake_image, _ = generator_txt2img(t_z,
-                                              net_rnn.outputs,
-                                              is_train=True, reuse=False, batch_size=batch_size)
-        # + tf.random_normal(shape=net_rnn.outputs.get_shape(), mean=0, stddev=0.02), # NOISE ON RNN
-        net_d, disc_fake_image_logits = discriminator_txt2img(
-            net_fake_image.outputs, net_rnn.outputs, is_train=True, reuse=False)
-        _, disc_real_image_logits = discriminator_txt2img(
-            t_real_image, net_rnn.outputs, is_train=True, reuse=True)
-        _, disc_mismatch_logits = discriminator_txt2img(
-            # t_wrong_image,
-            t_real_image,
-            # net_rnn.outputs,
-            rnn_embed(t_wrong_caption, is_train=False, reuse=True).outputs,
-            is_train=True, reuse=True)
-        ## testing inference for txt2img
-        net_g, _ = generator_txt2img(t_z,
-                                     rnn_embed(t_real_caption, is_train=False, reuse=True).outputs,
-                                     is_train=False, reuse=True, batch_size=batch_size)
+    # with tl.ops.suppress_stdout():
+    net_rnn = rnn_embed(t_real_caption, is_train=False, reuse=True)
+    net_fake_image, _ = generator_txt2img(t_z,
+                                          net_rnn.outputs,
+                                          is_train=True, reuse=False, batch_size=batch_size)
+    # + tf.random_normal(shape=net_rnn.outputs.get_shape(), mean=0, stddev=0.02), # NOISE ON RNN
+    net_d, disc_fake_image_logits = discriminator_txt2img(
+        net_fake_image.outputs, net_rnn.outputs, is_train=True, reuse=False)
+    _, disc_real_image_logits = discriminator_txt2img(
+        t_real_image, net_rnn.outputs, is_train=True, reuse=True)
+    _, disc_mismatch_logits = discriminator_txt2img(
+        # t_wrong_image,
+        t_real_image,
+        # net_rnn.outputs,
+        rnn_embed(t_wrong_caption, is_train=False, reuse=True).outputs,
+        is_train=True, reuse=True)
+    ## testing inference for txt2img
+    net_g, _ = generator_txt2img(t_z,
+                                 rnn_embed(t_real_caption, is_train=False, reuse=True).outputs,
+                                 is_train=False, reuse=True, batch_size=batch_size)
 
-        d_loss1 = tl.cost.sigmoid_cross_entropy(disc_real_image_logits, tf.ones_like(disc_real_image_logits), name='d1')
-        d_loss2 = tl.cost.sigmoid_cross_entropy(disc_mismatch_logits, tf.zeros_like(disc_mismatch_logits), name='d2')
-        d_loss3 = tl.cost.sigmoid_cross_entropy(disc_fake_image_logits, tf.zeros_like(disc_fake_image_logits), name='d3')
-        d_loss = d_loss1 + (d_loss2 + d_loss3) * 0.5
-        g_loss = tl.cost.sigmoid_cross_entropy(disc_fake_image_logits, tf.ones_like(disc_fake_image_logits), name='g')
+    d_loss1 = tl.cost.sigmoid_cross_entropy(disc_real_image_logits, tf.ones_like(disc_real_image_logits), name='d1')
+    d_loss2 = tl.cost.sigmoid_cross_entropy(disc_mismatch_logits, tf.zeros_like(disc_mismatch_logits), name='d2')
+    d_loss3 = tl.cost.sigmoid_cross_entropy(disc_fake_image_logits, tf.zeros_like(disc_fake_image_logits), name='d3')
+    d_loss = d_loss1 + (d_loss2 + d_loss3) * 0.5
+    g_loss = tl.cost.sigmoid_cross_entropy(disc_fake_image_logits, tf.ones_like(disc_fake_image_logits), name='g')
+    logging.disable(logging.NOTSET)
 
     ####======================== DEFINE TRAIN OPTS ==============================###
     lr = 0.0002
@@ -212,7 +217,7 @@ if __name__ == '__main__':
         for step in range(n_batch_epoch):
             step_time = time.time()
             ## get matched text
-            idexs = get_random_int(min=0, max=n_captions_train - 1, number=batch_size)
+            idexs = get_random_int(0, n_captions_train - 1, batch_size)
             b_real_caption = captions_ids_train[idexs]
             b_real_caption = tl.prepro.pad_sequences(b_real_caption, padding='post')
 
@@ -220,12 +225,12 @@ if __name__ == '__main__':
             b_real_images = images_train[np.floor(np.asarray(idexs).astype('float') / n_captions_per_image).astype('int')]
 
             ## get wrong caption
-            idexs = get_random_int(min=0, max=n_captions_train - 1, number=batch_size)
+            idexs = get_random_int(0, n_captions_train - 1, batch_size)
             b_wrong_caption = captions_ids_train[idexs]
             b_wrong_caption = tl.prepro.pad_sequences(b_wrong_caption, padding='post')
 
             ## get wrong image
-            idexs2 = get_random_int(min=0, max=n_images_train - 1, number=batch_size)
+            idexs2 = get_random_int(0, n_images_train - 1, batch_size)
             b_wrong_images = images_train[idexs2]
 
             ## get noise

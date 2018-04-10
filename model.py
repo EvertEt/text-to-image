@@ -1,7 +1,7 @@
 #! /usr/bin/python
 # -*- coding: utf8 -*-
 
-
+import tensorflow as tf
 import tensorlayer as tl
 from tensorlayer.layers import *
 
@@ -44,7 +44,7 @@ def generator(input_z, input_txt=None, is_train=True, reuse=False, batch_size=ba
                             W_init=w_init, b_init=None, name='g_h0/dense')
         net_h0 = BatchNormLayer(net_h0,  # act=tf.identity,
                                 is_train=is_train, gamma_init=gamma_init, name='g_h0/batch_norm')
-        net_h0 = ReshapeLayer(net_h0, [-1, s16, s16, gf_dim * 8], name='g_h0/reshape')
+        net_h0 = ReshapeLayer(net_h0, (-1, s16, s16, gf_dim * 8), name='g_h0/reshape')
 
         net = Conv2d(net_h0, gf_dim * 2, (1, 1), (1, 1),
                      padding='VALID', act=None, W_init=w_init, b_init=None, name='g_h1_res/conv2d')
@@ -58,7 +58,7 @@ def generator(input_z, input_txt=None, is_train=True, reuse=False, batch_size=ba
                      padding='SAME', act=None, W_init=w_init, b_init=None, name='g_h1_res/conv2d3')
         net = BatchNormLayer(net,  # act=tf.nn.relu,
                              is_train=is_train, gamma_init=gamma_init, name='g_h1_res/batch_norm3')
-        net_h1 = ElementwiseLayer(layer=[net_h0, net], combine_fn=tf.add, name='g_h1_res/add')
+        net_h1 = ElementwiseLayer([net_h0, net], combine_fn=tf.add, name='g_h1_res/add')
         net_h1.outputs = lrelu(net_h1.outputs)
 
         net_h2 = DeConv2d(net_h1, gf_dim * 4, (4, 4), out_size=(s8, s8), strides=(2, 2),
@@ -82,7 +82,7 @@ def generator(input_z, input_txt=None, is_train=True, reuse=False, batch_size=ba
                      padding='SAME', act=None, W_init=w_init, b_init=None, name='g_h3_res/conv2d3')
         net = BatchNormLayer(net,  # act=tf.nn.relu,
                              is_train=is_train, gamma_init=gamma_init, name='g_h3_res/batch_norm3')
-        net_h3 = ElementwiseLayer(layer=[net_h2, net], combine_fn=tf.add, name='g_h3_res/add')
+        net_h3 = ElementwiseLayer([net_h2, net], combine_fn=tf.add, name='g_h3_res/add')
         net_h3.outputs = lrelu(net_h3.outputs)
 
         net_h4 = DeConv2d(net_h3, gf_dim * 2, (4, 4), out_size=(s4, s4), strides=(2, 2),
@@ -216,7 +216,7 @@ def encoder_simple(input_images, input_txt=None, is_train=True, reuse=False):
 #                 padding='SAME', W_init=w_init, b_init=None, name='ig_h3/conv2d4')
 #         net_h = BatchNormLayer(net_h, #act=lambda x: tl.act.lrelu(x, 0.2),
 #                 is_train=is_train, gamma_init=gamma_init, name='ig_h3/batchnorm4')
-#         net_h3 = ElementwiseLayer(layer=[net_h3, net_h], combine_fn=tf.add, name='ig_h3/add')
+#         net_h3 = ElementwiseLayer([net_h3, net_h], combine_fn=tf.add, name='ig_h3/add')
 #         net_h3.outputs = tl.act.lrelu(net_h3.outputs, 0.2)
 #
 #         net_h4 = Conv2d(net_h3, df_dim*2, (4, 4), (1, 1), padding='SAME',
@@ -266,7 +266,7 @@ def encoder_resnet(input_images, input_txt=None, is_train=True, reuse=False):
                      padding='SAME', W_init=w_init, b_init=None, name='ig_h1_res/conv2d3')
         net = BatchNormLayer(net,  # act=lambda x: tl.act.lrelu(x, 0.2),
                              is_train=is_train, gamma_init=gamma_init, name='ig_h1_res/batchnorm3')
-        net_h1 = ElementwiseLayer(layer=[net_h1, net], combine_fn=tf.add, name='ig_h1_res/add')
+        net_h1 = ElementwiseLayer([net_h1, net], combine_fn=tf.add, name='ig_h1_res/add')
         net_h1.outputs = lrelu(net_h1.outputs)
 
         # print(net_h1.outputs) # (100, 8, 8, 512)
@@ -298,7 +298,7 @@ def encoder_resnet(input_images, input_txt=None, is_train=True, reuse=False):
                      padding='SAME', W_init=w_init, b_init=None, name='ig_h3_res/conv2d4')
         net = BatchNormLayer(net,  # act=lambda x: tl.act.lrelu(x, 0.2),
                              is_train=is_train, gamma_init=gamma_init, name='ig_h3_res/batchnorm4')
-        net_h3 = ElementwiseLayer(layer=[net_h2, net], combine_fn=tf.add, name='ig_h3_res/add')
+        net_h3 = ElementwiseLayer([net_h2, net], combine_fn=tf.add, name='ig_h3_res/add')
         net_h3.outputs = lrelu(net_h3.outputs)
         # print(net_h3.outputs)
         # exit()
@@ -334,6 +334,9 @@ def discriminator_x(input_images, input_txt=None, is_train=True, reuse=False):
     # w_init4 = tf.random_normal_initializer(stddev=0.01 * 7 * 7)
     # w_init5 = tf.random_normal_initializer(stddev=0.01 * 4 * 4)
     gamma_init = tf.random_normal_initializer(1., 0.01)
+
+    lrelu = lambda x: tl.act.lrelu(x, 0.2)
+    df_dim = 64
 
     with tf.variable_scope("discriminator_x", reuse=reuse):
         tl.layers.set_name_reuse(reuse)
@@ -433,7 +436,7 @@ def discriminator_x(input_images, input_txt=None, is_train=True, reuse=False):
 #                 padding='SAME', W_init=w_init, b_init=None, name='dx_h_res/conv2d4')
 #         net_h = BatchNormLayer(net_h, #act=lambda x: tl.act.lrelu(x, 0.2),
 #                 is_train=is_train, gamma_init=gamma_init, name='dx_h_res/batchnorm4')
-#         net_h2 = ElementwiseLayer(layer=[net_h1, net_h], combine_fn=tf.add, name='dx_h_res/add')
+#         net_h2 = ElementwiseLayer([net_h1, net_h], combine_fn=tf.add, name='dx_h_res/add')
 #         net_h2.outputs = tl.act.lrelu(net_h2.outputs, 0.2)
 #
 #         if input_txt is not None:
@@ -900,7 +903,7 @@ def generator_txt2img_simple(input_z, input_rnn_embed=None, is_train=True, reuse
 
         net_h0 = DenseLayer(net_in, gf_dim * 8 * s16 * s16, act=tf.identity,
                             W_init=w_init, b_init=b_init, name='g_h0/dense')
-        net_h0 = ReshapeLayer(net_h0, [-1, s16, s16, gf_dim * 8], name='g_h0/reshape')
+        net_h0 = ReshapeLayer(net_h0, (-1, s16, s16, gf_dim * 8), name='g_h0/reshape')
         net_h0 = BatchNormLayer(net_h0, act=tf.nn.relu, is_train=is_train,
                                 gamma_init=gamma_init, name='g_h0/batch_norm')
 
@@ -1005,7 +1008,7 @@ def generator_txt2img_resnet(input_z, t_txt=None, is_train=True, reuse=False, ba
                             W_init=w_init, b_init=None, name='g_h0/dense')
         net_h0 = BatchNormLayer(net_h0,  # act=tf.nn.relu,
                                 is_train=is_train, gamma_init=gamma_init, name='g_h0/batch_norm')
-        net_h0 = ReshapeLayer(net_h0, [-1, s16, s16, gf_dim * 8], name='g_h0/reshape')
+        net_h0 = ReshapeLayer(net_h0, (-1, s16, s16, gf_dim * 8), name='g_h0/reshape')
 
         net = Conv2d(net_h0, gf_dim * 2, (1, 1), (1, 1),
                      padding='VALID', act=None, W_init=w_init, b_init=None, name='g_h1_res/conv2d')
@@ -1019,7 +1022,7 @@ def generator_txt2img_resnet(input_z, t_txt=None, is_train=True, reuse=False, ba
                      padding='SAME', act=None, W_init=w_init, b_init=None, name='g_h1_res/conv2d3')
         net = BatchNormLayer(net,  # act=tf.nn.relu,
                              is_train=is_train, gamma_init=gamma_init, name='g_h1_res/batch_norm3')
-        net_h1 = ElementwiseLayer(layer=[net_h0, net], combine_fn=tf.add, name='g_h1_res/add')
+        net_h1 = ElementwiseLayer([net_h0, net], combine_fn=tf.add, name='g_h1_res/add')
         net_h1.outputs = tf.nn.relu(net_h1.outputs)
 
         # Note: you can also use DeConv2d to replace UpSampling2dLayer and Conv2d
@@ -1044,7 +1047,7 @@ def generator_txt2img_resnet(input_z, t_txt=None, is_train=True, reuse=False, ba
                      padding='SAME', act=None, W_init=w_init, b_init=None, name='g_h3_res/conv2d3')
         net = BatchNormLayer(net,  # act=tf.nn.relu,
                              is_train=is_train, gamma_init=gamma_init, name='g_h3_res/batch_norm3')
-        net_h3 = ElementwiseLayer(layer=[net_h2, net], combine_fn=tf.add, name='g_h3/add')
+        net_h3 = ElementwiseLayer([net_h2, net], combine_fn=tf.add, name='g_h3/add')
         net_h3.outputs = tf.nn.relu(net_h3.outputs)
 
         # net_h4 = DeConv2d(net_h3, gf_dim*2, (4, 4), out_size=(s4, s4), strides=(2, 2),
@@ -1117,7 +1120,7 @@ def discriminator_txt2img_resnet(input_images, t_txt=None, is_train=True, reuse=
                      padding='SAME', W_init=w_init, b_init=None, name='d_h4_res/conv2d3')
         net = BatchNormLayer(net,  # act=lambda x: tl.act.lrelu(x, 0.2),
                              is_train=is_train, gamma_init=gamma_init, name='d_h4_res/batchnorm3')
-        net_h4 = ElementwiseLayer(layer=[net_h3, net], combine_fn=tf.add, name='d_h4/add')
+        net_h4 = ElementwiseLayer([net_h3, net], combine_fn=tf.add, name='d_h4/add')
         net_h4.outputs = tl.act.lrelu(net_h4.outputs, 0.2)
 
         if t_txt is not None:
@@ -1183,7 +1186,7 @@ def z_encoder(input_images, is_train=True, reuse=False):
                      padding='SAME', W_init=w_init, b_init=None, name='d_h4_res/conv2d3')
         net = BatchNormLayer(net,  # act=lambda x: tl.act.lrelu(x, 0.2),
                              is_train=is_train, gamma_init=gamma_init, name='d_h4_res/batchnorm3')
-        net_h4 = ElementwiseLayer(layer=[net_h3, net], combine_fn=tf.add, name='d_h4/add')
+        net_h4 = ElementwiseLayer([net_h3, net], combine_fn=tf.add, name='d_h4/add')
         net_h4.outputs = tl.act.lrelu(net_h4.outputs, 0.2)
 
         net_ho = FlattenLayer(net_h4, name='d_ho/flatten')

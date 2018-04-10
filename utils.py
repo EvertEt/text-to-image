@@ -1,5 +1,9 @@
+import os
+import random
+import re
 import string
 
+import numpy as np
 import scipy.misc
 
 """ The functions here will be merged into TensorLayer after finishing this project.

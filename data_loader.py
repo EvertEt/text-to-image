@@ -1,4 +1,7 @@
+import time
+
 import nltk
+import tensorlayer as tl
 
 from utils import *
 
@@ -209,20 +212,49 @@ if __name__ == '__main__':
         print("img_capt_ids: %s" % img_capt_ids)
         print("id_to_word: %s" % [vocab.id_to_word(id) for id in img_capt_ids])
 
+        # Bounding boxes
+        print(' * Processing bounding boxes')
+        bounding = {}
+        with open(data_dir + '/bounding_boxes.txt', 'r') as t:
+            lines = []
+            for line in t:
+                split = line.split(' ')
+                assert len(split) == 5, 'split bounding_boxes.txt'
+                x = int(round(float(split[1].rstrip('\n'))))
+                y = int(round(float(split[2].rstrip('\n'))))
+                w = int(round(float(split[3].rstrip('\n'))))
+                h = int(round(float(split[4].rstrip('\n'))))
+                bounding[int(split[0])] = [x, y, w, h]
+        print(" * %d bounding boxes processed" % len(bounding))
+
         # Images
         print(" * %d images found, start loading and resizing ..." % len(img_mapping))
         s = time.time()
 
         images = []
         images_256 = []
+        bb = []
         imgs_title_list = sorted(img_mapping.items())
         for key, img_path_relative in imgs_title_list:
             img_path = os.path.join(img_dir, img_path_relative)
-
             img_raw = scipy.misc.imread(img_path, mode='RGB')
-            img = tl.prepro.imresize(img_raw, size=[64, 64])  # (64, 64, 3)
+            img, new_coords = tl.prepro.obj_box_imresize(img_raw, coords=[bounding[key]], size=[64, 64])  # (64, 64, 3)
+            bb.append(new_coords[0])
             img = img.astype(np.float32)
             images.append(img)
+            # x = new_coords[0][0]
+            # y = new_coords[0][1]
+            # w = new_coords[0][2]
+            # h = new_coords[0][3]
+            # for xx in range(w):
+            #     if x + xx < 64 and y + h < 64:
+            #         img[y][x + xx] = [255, 0, 0]
+            #         img[y + h][x + xx] = [255, 0, 0]
+            # for yy in range(h):
+            #     if y + yy < 64 and x + w < 64:
+            #         img[y + yy][x] = [255, 0, 0]
+            #         img[y + yy][x + w] = [255, 0, 0]
+            # tl.visualize.save_image(img, 'tmp/tmp' + str(key) + '.jpg')
             if need_256:
                 img = tl.prepro.imresize(img_raw, size=[256, 256])  # (256, 256, 3)
                 img = img.astype(np.float32)
@@ -232,14 +264,16 @@ if __name__ == '__main__':
         # images_256 = np.array(images_256)
         print(" * loading and resizing took %ss" % (time.time() - s))
 
+        # Counts
         n_images = len(captions_dict)
         n_captions = len(captions_ids)
-        n_captions_per_image = len(lines)  # 10
+        n_captions_per_image = 10
 
         print("n_captions: %d n_images: %d n_captions_per_image: %d" % (n_captions, n_images, n_captions_per_image))
 
         captions_ids_train, captions_ids_test = captions_ids[:11000 * n_captions_per_image], captions_ids[11000 * n_captions_per_image:]
         images_train, images_test = images[:11000], images[11000:]
+        bb_train, bb_test = bb[:11000], bb[11000:]
         if need_256:
             images_train_256, images_test_256 = images_256[:11000], images_256[11000:]
         else:
@@ -269,3 +303,5 @@ if __name__ == '__main__':
     save_all((images_test_256, images_test), '_image_test_' + dataset + '.pickle')
     save_all((n_captions_train, n_captions_test, n_captions_per_image, n_images_train, n_images_test), '_n_' + dataset + '.pickle')
     save_all((captions_ids_train, captions_ids_test), '_caption_' + dataset + '.pickle')
+    if dataset == 'birds':
+        save_all((bb_train, bb_test), '_bb_' + dataset + '.pickle')

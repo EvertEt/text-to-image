@@ -12,3 +12,4 @@ vocab_*.txt
 train.gif
 102flowers/102flowers/
 birds/images/
+checkpoint_*/
