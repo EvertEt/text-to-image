@@ -1,6 +1,7 @@
 #! /usr/bin/python
 # -*- coding: utf8 -*-
 """ GAN-CLS """
+import datetime
 import logging
 import pickle
 import time
@@ -103,7 +104,6 @@ if __name__ == '__main__':
     generator_txt2img = model.generator_txt2img_resnet
     discriminator_txt2img = model.discriminator_txt2img_resnet
 
-    # with tl.ops.suppress_stdout():
     net_rnn = rnn_embed(t_real_caption, is_train=False, reuse=True)
     net_fake_image, _ = generator_txt2img(t_z,
                                           net_rnn.outputs,
@@ -111,14 +111,13 @@ if __name__ == '__main__':
     # + tf.random_normal(shape=net_rnn.outputs.get_shape(), mean=0, stddev=0.02), # NOISE ON RNN
     net_d, disc_fake_image_logits = discriminator_txt2img(
         net_fake_image.outputs, net_rnn.outputs, is_train=True, reuse=False)
+
     _, disc_real_image_logits = discriminator_txt2img(
         t_real_image, net_rnn.outputs, is_train=True, reuse=True)
+
     _, disc_mismatch_logits = discriminator_txt2img(
-        # t_wrong_image,
-        t_real_image,
-        # net_rnn.outputs,
-        rnn_embed(t_wrong_caption, is_train=False, reuse=True).outputs,
-        is_train=True, reuse=True)
+        t_real_image, rnn_embed(t_wrong_caption, is_train=False, reuse=True).outputs, is_train=True, reuse=True)
+
     ## testing inference for txt2img
     net_g, _ = generator_txt2img(t_z,
                                  rnn_embed(t_real_caption, is_train=False, reuse=True).outputs,
@@ -171,24 +170,25 @@ if __name__ == '__main__':
     sample_size = batch_size
     sample_seed = np.random.normal(loc=0.0, scale=1.0, size=(sample_size, z_dim)).astype(np.float32)
     # sample_seed = np.random.uniform(low=-1, high=1, size=(sample_size, z_dim)).astype(np.float32)
+    n = int(sample_size / ni)
     if dataset == '102flowers':
-        sample_sentence = ["the flower shown has yellow anther red pistil and bright red petals."] * int(sample_size / ni) + \
-                          ["this flower has petals that are yellow, white and purple and has dark lines"] * int(sample_size / ni) + \
-                          ["the petals on this flower are white with a yellow center"] * int(sample_size / ni) + \
-                          ["this flower has a lot of small round pink petals."] * int(sample_size / ni) + \
-                          ["this flower is orange in color, and has petals that are ruffled and rounded."] * int(sample_size / ni) + \
-                          ["the flower has yellow petals and the center of it is brown."] * int(sample_size / ni) + \
-                          ["this flower has petals that are blue and white."] * int(sample_size / ni) + \
-                          ["these white flowers have petals that start off white in color and end in a white towards the tips."] * int(sample_size / ni)
+        sample_sentence = ["the flower shown has yellow anther red pistil and bright red petals."] * n + \
+                          ["this flower has petals that are yellow, white and purple and has dark lines"] * n + \
+                          ["the petals on this flower are white with a yellow center"] * n + \
+                          ["this flower has a lot of small round pink petals."] * n + \
+                          ["this flower is orange in color, and has petals that are ruffled and rounded."] * n + \
+                          ["the flower has yellow petals and the center of it is brown."] * n + \
+                          ["this flower has petals that are blue and white."] * n + \
+                          ["these white flowers have petals that start off white in color and end in a white towards the tips."] * n
     else:
-        sample_sentence = ["this vibrant red bird has a pointed black beak."] * int(sample_size / ni) + \
-                          ["this bird is yellowish orange with black wings"] * int(sample_size / ni) + \
-                          ["the bright blue bird has a white colored belly"] * int(sample_size / ni) + \
-                          ["this small bird has a pink breast and crown, and black primaries and secondaries."] * int(sample_size / ni) + \
-                          ["This birds is completely blue."] * int(sample_size / ni) + \
-                          ["an all black bird with a distinct thick, rounded bill"] * int(sample_size / ni) + \
-                          ["the gray bird has a light grey head and grey webbed feet."] * int(sample_size / ni) + \
-                          ["This blue bird has white wings."] * int(sample_size / ni)
+        sample_sentence = ["this vibrant red bird has a pointed black beak."] * n + \
+                          ["this bird is yellowish orange with black wings"] * n + \
+                          ["the bright blue bird has a white colored belly"] * n + \
+                          ["this small bird has a pink breast and crown, and black primaries and secondaries."] * n + \
+                          ["This birds is completely blue."] * n + \
+                          ["an all black bird with a distinct thick, rounded bill"] * n + \
+                          ["the gray bird has a light grey head and grey webbed feet."] * n + \
+                          ["This blue bird has white wings."] * n
 
     # sample_sentence = captions_ids_test[0:sample_size]
     for i, sentence in enumerate(sample_sentence):
@@ -266,7 +266,7 @@ if __name__ == '__main__':
                   % (epoch, n_epoch, step, n_batch_epoch, time.time() - step_time, errD, errG, errRNN))
 
         if (epoch + 1) % print_freq == 0:
-            print(" ** Epoch %d took %fs" % (epoch, time.time() - start_time))
+            print(" ** [%s] Epoch %d took %fs" % (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), epoch, time.time() - start_time))
             img_gen, rnn_out = sess.run([net_g.outputs, net_rnn.outputs], feed_dict={
                 t_real_caption: sample_sentence,
                 t_z: sample_seed})
