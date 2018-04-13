@@ -254,6 +254,8 @@ if __name__ == '__main__':
             #     if y + yy < 64 and x + w < 64:
             #         img[y + yy][x] = [255, 0, 0]
             #         img[y + yy][x + w] = [255, 0, 0]
+            # c = get_center(new_coords[0])
+            # img[int(c[1])][int(c[0])] = [255, 255, 255]
             # tl.visualize.save_image(img, 'tmp/tmp' + str(key) + '.jpg')
             if need_256:
                 img = tl.prepro.imresize(img_raw, size=[256, 256])  # (256, 256, 3)

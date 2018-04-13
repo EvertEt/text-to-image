@@ -63,17 +63,20 @@ if __name__ == '__main__':
         print('Opened Caption')
         captions_ids_train, captions_ids_test = pickle.load(f)
     print('Loaded Caption')
-    if dataset == 'birds':
-        print('Opening BB')
-        with open('_bb_' + dataset + '.pickle', 'rb') as f:
-            print('Opened BB')
-            bb_train, bb_test = pickle.load(f)
-        print('Loaded BB')
+    if dataset != 'birds':
+        print('WARNING: loading bb for non-bird dataset!!!')
+    print('Opening BB')
+    with open('_bb_' + dataset + '.pickle', 'rb') as f:
+        print('Opened BB')
+        bb_train, bb_test = pickle.load(f)
+    print('Loaded BB')
     print('Loading Done')
     # images_train_256 = np.array(images_train_256)
     # images_test_256 = np.array(images_test_256)
     images_train = np.array(images_train)
     images_test = np.array(images_test)
+    bb_train = np.array(bb_train)
+    bb_test = np.array(bb_test)
 
     ni = int(np.ceil(np.sqrt(batch_size)))
 
@@ -84,12 +87,13 @@ if __name__ == '__main__':
     ###======================== DEFINE MODEL ===================================###
     t_real_image = tf.placeholder('float32', [batch_size, image_size, image_size, 3], name='real_image')
     t_wrong_image = tf.placeholder('float32', [batch_size, image_size, image_size, 3], name='wrong_image')
+    t_real_pos = tf.placeholder('float32', [batch_size, 2], name='real_pos')
+    t_wrong_pos = tf.placeholder('float32', [batch_size, 2], name='wrong_pos')
     t_real_caption = tf.placeholder(dtype=tf.int64, shape=[batch_size, None], name='real_caption_input')
     t_wrong_caption = tf.placeholder(dtype=tf.int64, shape=[batch_size, None], name='wrong_caption_input')
     t_z = tf.placeholder(tf.float32, [batch_size, z_dim], name='z_noise')
 
     ## training inference for text-to-image mapping
-    logging.disable(logging.CRITICAL)
     net_cnn = cnn_encoder(t_real_image, is_train=True, reuse=False)
     x = net_cnn.outputs
     v = rnn_embed(t_real_caption, is_train=True, reuse=False).outputs
@@ -105,30 +109,24 @@ if __name__ == '__main__':
     discriminator_txt2img = model.discriminator_txt2img_resnet
 
     net_rnn = rnn_embed(t_real_caption, is_train=False, reuse=True)
-    net_fake_image, _ = generator_txt2img(t_z,
-                                          net_rnn.outputs,
-                                          is_train=True, reuse=False, batch_size=batch_size)
-    # + tf.random_normal(shape=net_rnn.outputs.get_shape(), mean=0, stddev=0.02), # NOISE ON RNN
-    net_d, disc_fake_image_logits = discriminator_txt2img(
-        net_fake_image.outputs, net_rnn.outputs, is_train=True, reuse=False)
 
-    _, disc_real_image_logits = discriminator_txt2img(
-        t_real_image, net_rnn.outputs, is_train=True, reuse=True)
+    net_fake_image, _ = generator_txt2img(t_z, t_real_pos, net_rnn.outputs, is_train=True, reuse=False, batch_size=batch_size)
 
-    _, disc_mismatch_logits = discriminator_txt2img(
-        t_real_image, rnn_embed(t_wrong_caption, is_train=False, reuse=True).outputs, is_train=True, reuse=True)
+    net_d, disc_fake_image_logits = discriminator_txt2img(net_fake_image.outputs, t_real_pos, net_rnn.outputs, is_train=True, reuse=False)
+
+    _, disc_real_image_logits = discriminator_txt2img(t_real_image, t_real_pos, net_rnn.outputs, is_train=True, reuse=True)
+
+    _, disc_mismatch_logits = discriminator_txt2img(t_real_image, t_wrong_pos, rnn_embed(t_wrong_caption, is_train=False, reuse=True).outputs, is_train=True, reuse=True)
+    # TODO mismatchen ook met pos en text apart testen
 
     ## testing inference for txt2img
-    net_g, _ = generator_txt2img(t_z,
-                                 rnn_embed(t_real_caption, is_train=False, reuse=True).outputs,
-                                 is_train=False, reuse=True, batch_size=batch_size)
+    net_g, _ = generator_txt2img(t_z, t_real_pos, rnn_embed(t_real_caption, is_train=False, reuse=True).outputs, is_train=False, reuse=True, batch_size=batch_size)
 
     d_loss1 = tl.cost.sigmoid_cross_entropy(disc_real_image_logits, tf.ones_like(disc_real_image_logits), name='d1')
     d_loss2 = tl.cost.sigmoid_cross_entropy(disc_mismatch_logits, tf.zeros_like(disc_mismatch_logits), name='d2')
     d_loss3 = tl.cost.sigmoid_cross_entropy(disc_fake_image_logits, tf.zeros_like(disc_fake_image_logits), name='d3')
     d_loss = d_loss1 + (d_loss2 + d_loss3) * 0.5
     g_loss = tl.cost.sigmoid_cross_entropy(disc_fake_image_logits, tf.ones_like(disc_fake_image_logits), name='g')
-    logging.disable(logging.NOTSET)
 
     ####======================== DEFINE TRAIN OPTS ==============================###
     lr = 0.0002
@@ -199,6 +197,8 @@ if __name__ == '__main__':
         # print(sample_sentence[i])
     sample_sentence = tl.prepro.pad_sequences(sample_sentence, padding='post')
 
+    sample_pos = [[15, 15] for _ in range(batch_size)]
+
     n_epoch = 600
     print_freq = 1
     n_batch_epoch = int(n_images_train / batch_size)
@@ -222,7 +222,12 @@ if __name__ == '__main__':
             b_real_caption = tl.prepro.pad_sequences(b_real_caption, padding='post')
 
             ## get real image
-            b_real_images = images_train[np.floor(np.asarray(idexs).astype('float') / n_captions_per_image).astype('int')]
+            rounded_idexs = np.floor(np.asarray(idexs).astype('float') / n_captions_per_image).astype('int')
+            b_real_images = images_train[rounded_idexs]
+
+            ## get real bb
+            b_real_pos = bb_train[rounded_idexs]
+            b_real_pos = list(map(get_center, b_real_pos))
 
             ## get wrong caption
             idexs = get_random_int(0, n_captions_train - 1, batch_size)
@@ -232,6 +237,10 @@ if __name__ == '__main__':
             ## get wrong image
             idexs2 = get_random_int(0, n_images_train - 1, batch_size)
             b_wrong_images = images_train[idexs2]
+
+            ## get wrong bb
+            b_wrong_pos = bb_train[idexs2]
+            b_wrong_pos = list(map(get_center, b_wrong_pos))
 
             ## get noise
             b_z = np.random.normal(loc=0.0, scale=1.0, size=(sample_size, z_dim)).astype(np.float32)
@@ -256,10 +265,13 @@ if __name__ == '__main__':
                 # t_wrong_image : b_wrong_images,
                 t_wrong_caption: b_wrong_caption,
                 t_real_caption: b_real_caption,
+                t_real_pos: b_real_pos,
+                t_wrong_pos: b_wrong_pos,
                 t_z: b_z})
             ## updates G
             errG, _ = sess.run([g_loss, g_optim], feed_dict={
                 t_real_caption: b_real_caption,
+                t_real_pos: b_real_pos,
                 t_z: b_z})
 
             print("Epoch: [%2d/%2d] [%4d/%4d] time: %4.4fs, d_loss: %.8f, g_loss: %.8f, rnn_loss: %.8f"
@@ -269,6 +281,7 @@ if __name__ == '__main__':
             print(" ** [%s] Epoch %d took %fs" % (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), epoch, time.time() - start_time))
             img_gen, rnn_out = sess.run([net_g.outputs, net_rnn.outputs], feed_dict={
                 t_real_caption: sample_sentence,
+                t_real_pos: sample_pos,
                 t_z: sample_seed})
 
             # img_gen = threading_data(img_gen, prepro_img, mode='rescale')

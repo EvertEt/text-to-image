@@ -140,4 +140,10 @@ def combine_and_save_image_sets(image_sets, directory):
 
         scipy.misc.imsave(os.path.join(directory, 'combined_{}.jpg'.format(i)), combined_image)
 
-#
+
+def get_center(coords):
+    x = coords[0]
+    y = coords[1]
+    w = coords[2]
+    h = coords[3]
+    return [x + w / 2, y + h / 2]

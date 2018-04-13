@@ -101,7 +101,7 @@ def cnn_encoder(inputs, is_train=True, reuse=False, name='cnnftxt', return_h3=Fa
 
 
 ## default g1, d1 ==============================================================
-def generator_txt2img_resnet(input_z, t_txt=None, is_train=True, reuse=False, batch_size=batch_size):
+def generator_txt2img_resnet(input_z, input_pos, t_txt=None, is_train=True, reuse=False, batch_size=batch_size):
     """ z + (txt) --> 64x64 """
     # https://github.com/hanzhanggit/StackGAN/blob/master/stageI/model.py
     s = image_size  # output image size [64]
@@ -114,12 +114,13 @@ def generator_txt2img_resnet(input_z, t_txt=None, is_train=True, reuse=False, ba
     with tf.variable_scope("generator", reuse=reuse):
         tl.layers.set_name_reuse(reuse)
         net_in = InputLayer(input_z, name='g_inputz')
+        net_pos = InputLayer(input_pos, name='g_input_pos')
 
         if t_txt is not None:
             net_txt = InputLayer(t_txt, name='g_input_txt')
             net_txt = DenseLayer(net_txt, n_units=t_dim,
                                  act=lambda x: tl.act.lrelu(x, 0.2), W_init=w_init, name='g_reduce_text/dense')
-            net_in = ConcatLayer([net_in, net_txt], concat_dim=1, name='g_concat_z_txt')
+            net_in = ConcatLayer([net_in, net_txt, net_pos], concat_dim=1, name='g_concat_z_txt')
 
         net_h0 = DenseLayer(net_in, gf_dim * 8 * s16 * s16, act=tf.identity,
                             W_init=w_init, b_init=None, name='g_h0/dense')
@@ -196,7 +197,7 @@ def generator_txt2img_resnet(input_z, t_txt=None, is_train=True, reuse=False, ba
     return net_ho, logits
 
 
-def discriminator_txt2img_resnet(input_images, t_txt=None, is_train=True, reuse=False):
+def discriminator_txt2img_resnet(input_images, input_pos, t_txt=None, is_train=True, reuse=False):
     """ 64x64 + (txt) --> real/fake """
     # https://github.com/hanzhanggit/StackGAN/blob/master/stageI/model.py
     # Discriminator with ResNet : line 197 https://github.com/reedscot/icml2016/blob/master/main_cls.lua
@@ -209,6 +210,7 @@ def discriminator_txt2img_resnet(input_images, t_txt=None, is_train=True, reuse=
     with tf.variable_scope("discriminator", reuse=reuse):
         tl.layers.set_name_reuse(reuse)
         net_in = InputLayer(input_images, name='d_input/images')
+
         net_h0 = Conv2d(net_in, df_dim, (4, 4), (2, 2), act=lambda x: tl.act.lrelu(x, 0.2),
                         padding='SAME', W_init=w_init, name='d_h0/conv2d')
 
@@ -240,11 +242,14 @@ def discriminator_txt2img_resnet(input_images, t_txt=None, is_train=True, reuse=
         net_h4 = ElementwiseLayer([net_h3, net], combine_fn=tf.add, name='d_h4/add')
         net_h4.outputs = tl.act.lrelu(net_h4.outputs, 0.2)
 
+        net_pos = InputLayer(input_pos, name='d_input_pos')
+
         if t_txt is not None:
             net_txt = InputLayer(t_txt, name='d_input_txt')
             net_txt = DenseLayer(net_txt, n_units=t_dim,
                                  act=lambda x: tl.act.lrelu(x, 0.2),
                                  W_init=w_init, name='d_reduce_txt/dense')
+            net_txt = ConcatLayer([net_txt, net_pos], concat_dim=1, name='d_txt_pos_concat')
             net_txt = ExpandDimsLayer(net_txt, 1, name='d_txt/expanddim1')
             net_txt = ExpandDimsLayer(net_txt, 1, name='d_txt/expanddim2')
             net_txt = TileLayer(net_txt, [1, 4, 4, 1], name='d_txt/tile')
@@ -261,81 +266,3 @@ def discriminator_txt2img_resnet(input_images, t_txt=None, is_train=True, reuse=
         logits = net_ho.outputs
         net_ho.outputs = tf.nn.sigmoid(net_ho.outputs)
     return net_ho, logits
-
-
-def z_encoder(input_images, is_train=True, reuse=False):
-    """ 64x64 -> z """
-    w_init = tf.random_normal_initializer(stddev=0.02)
-    gamma_init = tf.random_normal_initializer(1., 0.02)
-    df_dim = 64  # 64 for flower, 196 for MSCOCO
-    s = 64  # output image size [64]
-    s2, s4, s8, s16 = int(s / 2), int(s / 4), int(s / 8), int(s / 16)
-
-    with tf.variable_scope("z_encoder", reuse=reuse):
-        tl.layers.set_name_reuse(reuse)
-
-        net_in = InputLayer(input_images, name='d_input/images')
-        net_h0 = Conv2d(net_in, df_dim, (4, 4), (2, 2), act=lambda x: tl.act.lrelu(x, 0.2),
-                        padding='SAME', W_init=w_init, name='d_h0/conv2d')
-
-        net_h1 = Conv2d(net_h0, df_dim * 2, (4, 4), (2, 2), act=None,
-                        padding='SAME', W_init=w_init, b_init=None, name='d_h1/conv2d')
-        net_h1 = BatchNormLayer(net_h1, act=lambda x: tl.act.lrelu(x, 0.2),
-                                is_train=is_train, gamma_init=gamma_init, name='d_h1/batchnorm')
-        net_h2 = Conv2d(net_h1, df_dim * 4, (4, 4), (2, 2), act=None,
-                        padding='SAME', W_init=w_init, b_init=None, name='d_h2/conv2d')
-        net_h2 = BatchNormLayer(net_h2, act=lambda x: tl.act.lrelu(x, 0.2),
-                                is_train=is_train, gamma_init=gamma_init, name='d_h2/batchnorm')
-        net_h3 = Conv2d(net_h2, df_dim * 8, (4, 4), (2, 2), act=None,
-                        padding='SAME', W_init=w_init, b_init=None, name='d_h3/conv2d')
-        net_h3 = BatchNormLayer(net_h3,  # act=lambda x: tl.act.lrelu(x, 0.2),
-                                is_train=is_train, gamma_init=gamma_init, name='d_h3/batchnorm')
-
-        net = Conv2d(net_h3, df_dim * 2, (1, 1), (1, 1), act=None,
-                     padding='VALID', W_init=w_init, b_init=None, name='d_h4_res/conv2d')
-        net = BatchNormLayer(net, act=lambda x: tl.act.lrelu(x, 0.2),
-                             is_train=is_train, gamma_init=gamma_init, name='d_h4_res/batchnorm')
-        net = Conv2d(net, df_dim * 2, (3, 3), (1, 1), act=None,
-                     padding='SAME', W_init=w_init, b_init=None, name='d_h4_res/conv2d2')
-        net = BatchNormLayer(net, act=lambda x: tl.act.lrelu(x, 0.2),
-                             is_train=is_train, gamma_init=gamma_init, name='d_h4_res/batchnorm2')
-        net = Conv2d(net, df_dim * 8, (3, 3), (1, 1), act=None,
-                     padding='SAME', W_init=w_init, b_init=None, name='d_h4_res/conv2d3')
-        net = BatchNormLayer(net,  # act=lambda x: tl.act.lrelu(x, 0.2),
-                             is_train=is_train, gamma_init=gamma_init, name='d_h4_res/batchnorm3')
-        net_h4 = ElementwiseLayer([net_h3, net], combine_fn=tf.add, name='d_h4/add')
-        net_h4.outputs = tl.act.lrelu(net_h4.outputs, 0.2)
-
-        net_ho = FlattenLayer(net_h4, name='d_ho/flatten')
-        net_ho = DenseLayer(net_ho, n_units=z_dim, act=tf.identity,
-                            W_init=w_init, name='d_ho/dense')
-
-        # w_init = tf.random_normal_initializer(stddev=0.02)
-        # b_init = None
-        # gamma_init = tf.random_normal_initializer(1., 0.02)
-        #
-        # net_in = InputLayer(input_images, name='p/in')
-        # net_h0 = Conv2d(net_in, df_dim, (5, 5), (2, 2), act=lambda x: tl.act.lrelu(x, 0.2),
-        #         padding='SAME', W_init=w_init, name='p/h0/conv2d')
-        #
-        # net_h1 = Conv2d(net_h0, df_dim*2, (5, 5), (2, 2), act=None,
-        #         padding='SAME', W_init=w_init, b_init=b_init, name='p/h1/conv2d')
-        # net_h1 = BatchNormLayer(net_h1, act=lambda x: tl.act.lrelu(x, 0.2),
-        #         is_train=is_train, gamma_init=gamma_init, name='p/h1/batch_norm')
-        #
-        # net_h2 = Conv2d(net_h1, df_dim*4, (5, 5), (2, 2), act=None,
-        #         padding='SAME', W_init=w_init, b_init=b_init, name='p/h2/conv2d')
-        # net_h2 = BatchNormLayer(net_h2, act=lambda x: tl.act.lrelu(x, 0.2),
-        #         is_train=is_train, gamma_init=gamma_init, name='p/h2/batch_norm')
-        #
-        # net_h3 = Conv2d(net_h2, df_dim*8, (5, 5), (2, 2), act=None,
-        #         padding='SAME', W_init=w_init, b_init=b_init, name='p/h3/conv2d')
-        # net_h3 = BatchNormLayer(net_h3, act=lambda x: tl.act.lrelu(x, 0.2),
-        #         is_train=is_train, gamma_init=gamma_init, name='p/h3/batch_norm')
-        #
-        # net_h4 = FlattenLayer(net_h3, name='p/h4/flatten')
-        # net_ho = DenseLayer(net_h4, n_units=z_dim,
-        #         act=tf.identity,
-        #         # act=tf.nn.tanh,
-        #         W_init = w_init, name='p/h4/output_real_fake')
-    return net_ho
