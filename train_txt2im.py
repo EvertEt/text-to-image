@@ -246,8 +246,8 @@ if __name__ == '__main__':
             b_z = np.random.normal(loc=0.0, scale=1.0, size=(sample_size, z_dim)).astype(np.float32)
 
             # [0, 255] --> [-1, 1] + augmentation
-            b_real_images = threading_data(b_real_images, prepro_img, mode='train')
-            b_wrong_images = threading_data(b_wrong_images, prepro_img, mode='train')
+            b_real_images, b_real_pos = zip(*threading_data(list(zip(b_real_images, b_real_pos)), prepro_img, img_size=image_size))
+            b_wrong_images, b_wrong_pos = zip(*threading_data(list(zip(b_wrong_images, b_wrong_pos)), prepro_img, img_size=image_size))
 
             ## updates text-to-image mapping
             if epoch < 50:

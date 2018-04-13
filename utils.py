@@ -83,51 +83,28 @@ def save_images(images, size, image_path):
 from tensorlayer.prepro import *
 
 
-def prepro_img(x, mode=None):
-    if mode == 'train':
-        # rescale [0, 255] --> (-1, 1), random flip, crop, rotate
-        #   paper 5.1: During mini-batch selection for training we randomly pick
-        #   an image view (e.g. crop, flip) of the image and one of the captions
-        # flip, rotate, crop, resize : https://github.com/reedscot/icml2016/blob/master/data/donkey_folder_coco.lua
-        # flip : https://github.com/paarthneekhara/text-to-image/blob/master/Utils/image_processing.py
-        x = flip_axis(x, axis=1, is_random=True)
-        x = rotation(x, rg=16, is_random=True, fill_mode='nearest')
-        # x = crop(x, wrg=50, hrg=50, is_random=True)
-        # x = imresize(x, size=[64, 64], interp='bilinear', mode=None)
-        x = imresize(x, size=[64 + 15, 64 + 15], interp='bilinear', mode=None)
-        x = crop(x, wrg=64, hrg=64, is_random=True)
-        x = x / (255. / 2.)
-        x = x - 1.
-        # x = x * 0.9999
-    elif mode == 'train_stackGAN':
-        x = flip_axis(x, axis=1, is_random=True)
-        x = rotation(x, rg=16, is_random=True, fill_mode='nearest')
-        # x = crop(x, wrg=50, hrg=50, is_random=True)
-        # x = imresize(x, size=[64, 64], interp='bilinear', mode=None)
-        x = imresize(x, size=[316, 316], interp='bilinear', mode=None)
-        x = crop(x, wrg=256, hrg=256, is_random=True)
-        x = x / (255. / 2.)
-        x = x - 1.
-        # x = x * 0.9999
-    elif mode == 'rescale':
-        # rescale (-1, 1) --> (0, 1) for display
-        x = (x + 1.) / 2.
-    elif mode == 'debug':
-        x = flip_axis(x, axis=1, is_random=False)
-        # x = rotation(x, rg=16, is_random=False, fill_mode='nearest')
-        # x = crop(x, wrg=50, hrg=50, is_random=True)
-        # x = imresize(x, size=[64, 64], interp='bilinear', mode=None)
-        x = x / 255.
-    elif mode == 'translation':
-        x = x / (255. / 2.)
-        x = x - 1.
-        # from skimage.filters import gaussian
-        # print(x.shape, np.min(x), np.max(x))
-        # x = x * 0.9999
-        # x = gaussian(x, sigma=0.6, multichannel=True)
-    else:
-        raise Exception("Not support : %s" % mode)
-    return x
+def prepro_img(data, img_size=64):
+    # rescale [0, 255] --> (-1, 1), random flip, crop, rotate
+    #   paper 5.1: During mini-batch selection for training we randomly pick
+    #   an image view (e.g. crop, flip) of the image and one of the captions
+    # flip, rotate, crop, resize : https://github.com/reedscot/icml2016/blob/master/data/donkey_folder_coco.lua
+    # flip : https://github.com/paarthneekhara/text-to-image/blob/master/Utils/image_processing.py
+
+    x, c = data
+
+    if np.random.choice([True, False]):
+        x = flip_axis(x, axis=1)
+        c = [img_size - c[0], c[1]]
+
+    # TODO possible?
+    x = rotation(x, rg=16, is_random=True, fill_mode='nearest')
+    x = imresize(x, size=[64, 64], interp='bilinear', mode=None)
+    x = imresize(x, size=[64 + 15, 64 + 15], interp='bilinear', mode=None)
+    x = crop(x, wrg=64, hrg=64, is_random=True)
+    x = x / (255. / 2.)
+    x = x - 1.
+    # x = x * 0.9999
+    return x, c
 
 
 def combine_and_save_image_sets(image_sets, directory):
