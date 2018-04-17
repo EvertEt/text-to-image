@@ -106,8 +106,9 @@ def prepro_img(data, img_size=64):
     s = (img_size + 15) / img_size
     c = [c[0] * s, c[1] * s]
 
-    x, _, new_coords = obj_box_crop(x, coords=[[c[0], c[1], 20, 20]], classes=[0], wrg=img_size, hrg=img_size, is_random=True)
-    c = [new_coords[0][0], new_coords[0][1]]
+    x, _, new_coords = obj_box_crop(x, coords=[[c[0], c[1], 20, 20]], classes=[0], wrg=img_size, hrg=img_size, is_random=True, is_center=True)
+    if len(new_coords) == 1:
+        c = [new_coords[0][0], new_coords[0][1]]
 
     x = x / (255. / 2.)
     x = x - 1.
