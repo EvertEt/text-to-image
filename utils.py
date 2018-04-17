@@ -1,3 +1,4 @@
+import math
 import os
 import random
 import re
@@ -5,6 +6,7 @@ import string
 
 import numpy as np
 import scipy.misc
+import tensorlayer as tl
 
 """ The functions here will be merged into TensorLayer after finishing this project.
 """
@@ -96,15 +98,39 @@ def prepro_img(data, img_size=64):
         x = flip_axis(x, axis=1)
         c = [img_size - c[0], c[1]]
 
-    # TODO possible?
-    x = rotation(x, rg=16, is_random=True, fill_mode='nearest')
-    x = imresize(x, size=[64, 64], interp='bilinear', mode=None)
-    x = imresize(x, size=[64 + 15, 64 + 15], interp='bilinear', mode=None)
-    x = crop(x, wrg=64, hrg=64, is_random=True)
+    r = np.random.choice(32) - 16
+    x = rotation(x, rg=r, fill_mode='nearest')
+    c = rotate([img_size / 2, img_size / 2], c, r)
+
+    x = imresize(x, size=[img_size + 15, img_size + 15], interp='bilinear')
+    s = (img_size + 15) / img_size
+    c = [c[0] * s, c[1] * s]
+
+    x, _, new_coords = obj_box_crop(x, coords=[[c[0], c[1], 20, 20]], classes=[0], wrg=img_size, hrg=img_size, is_random=True)
+    c = [new_coords[0][0], new_coords[0][1]]
+
     x = x / (255. / 2.)
     x = x - 1.
-    # x = x * 0.9999
+
     return x, c
+
+
+def rotate(origin, point, angle):
+    """
+    Rotate a point counterclockwise by a given angle around a given origin.
+
+    The angle should be given in degrees.
+    """
+    angle = math.radians(angle)
+    ox, oy = origin
+    px, py = point
+
+    cos = math.cos(angle)
+    sin = math.sin(angle)
+
+    qx = ox + cos * (px - ox) - sin * (py - oy)
+    qy = oy + sin * (px - ox) + cos * (py - oy)
+    return [qx, qy]
 
 
 def combine_and_save_image_sets(image_sets, directory):
