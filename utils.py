@@ -113,6 +113,8 @@ def prepro_img(data, img_size=64):
     x = x / (255. / 2.)
     x = x - 1.
 
+    c = [c[0] / img_size, c[1] / img_size]
+
     return x, c
 
 
