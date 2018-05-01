@@ -197,7 +197,7 @@ if __name__ == '__main__':
         # print(sample_sentence[i])
     sample_sentence = tl.prepro.pad_sequences(sample_sentence, padding='post')
 
-    sample_pos = [[0.2, 0.2] for _ in range(sample_size)]
+    sample_pos = [[15, 15] for _ in range(batch_size)]
 
     n_epoch = 600
     print_freq = 1
@@ -268,7 +268,6 @@ if __name__ == '__main__':
                 t_real_pos: b_real_pos,
                 t_wrong_pos: b_wrong_pos,
                 t_z: b_z})
-
             ## updates G
             errG, _ = sess.run([g_loss, g_optim], feed_dict={
                 t_real_caption: b_real_caption,
