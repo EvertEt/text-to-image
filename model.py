@@ -120,7 +120,7 @@ def generator_txt2img_resnet(input_z, input_pos, t_txt=None, is_train=True, reus
             net_txt = InputLayer(t_txt, name='g_input_txt')
             net_txt = DenseLayer(net_txt, n_units=t_dim,
                                  act=lambda x: tl.act.lrelu(x, 0.2), W_init=w_init, name='g_reduce_text/dense')
-            net_in = ConcatLayer([net_in, net_txt, net_pos], concat_dim=1, name='g_concat_z_txt')
+            net_in = ConcatLayer([net_in, net_txt], concat_dim=1, name='g_concat_z_txt') #, net_pos
 
         net_h0 = DenseLayer(net_in, gf_dim * 8 * s16 * s16, act=tf.identity,
                             W_init=w_init, b_init=None, name='g_h0/dense')
@@ -249,7 +249,7 @@ def discriminator_txt2img_resnet(input_images, input_pos, t_txt=None, is_train=T
             net_txt = DenseLayer(net_txt, n_units=t_dim,
                                  act=lambda x: tl.act.lrelu(x, 0.2),
                                  W_init=w_init, name='d_reduce_txt/dense')
-            net_txt = ConcatLayer([net_txt, net_pos], concat_dim=1, name='d_txt_pos_concat')
+            # net_txt = ConcatLayer([net_txt, net_pos], concat_dim=1, name='d_txt_pos_concat')
             net_txt = ExpandDimsLayer(net_txt, 1, name='d_txt/expanddim1')
             net_txt = ExpandDimsLayer(net_txt, 1, name='d_txt/expanddim2')
             net_txt = TileLayer(net_txt, [1, 4, 4, 1], name='d_txt/tile')
