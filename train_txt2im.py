@@ -103,6 +103,7 @@ if __name__ == '__main__':
     alpha = 0.2  # margin alpha
     rnn_loss = tf.reduce_mean(tf.maximum(0., alpha - cosine_similarity(x, v) + cosine_similarity(x, v_w))) + \
                tf.reduce_mean(tf.maximum(0., alpha - cosine_similarity(x, v) + cosine_similarity(x_w, v)))
+    summ_rnn_loss = tf.summary.scalar('rnn_loss', rnn_loss)
 
     ## training inference for txt2img
     generator_txt2img = model.generator_txt2img_resnet
@@ -123,10 +124,17 @@ if __name__ == '__main__':
     net_g, _ = generator_txt2img(t_z, t_real_pos, rnn_embed(t_real_caption, is_train=False, reuse=True).outputs, is_train=False, reuse=True, batch_size=batch_size)
 
     d_loss1 = tl.cost.sigmoid_cross_entropy(disc_real_image_logits, tf.ones_like(disc_real_image_logits), name='d1')
+    summ_d_loss1 = tf.summary.scalar('d_loss1', d_loss1)
     d_loss2 = tl.cost.sigmoid_cross_entropy(disc_mismatch_logits, tf.zeros_like(disc_mismatch_logits), name='d2')
+    summ_d_loss2 = tf.summary.scalar('d_loss2', d_loss2)
     d_loss3 = tl.cost.sigmoid_cross_entropy(disc_fake_image_logits, tf.zeros_like(disc_fake_image_logits), name='d3')
+    summ_d_loss3 = tf.summary.scalar('d_loss3', d_loss3)
     d_loss = d_loss1 + (d_loss2 + d_loss3) * 0.5
+    summ_d_loss_tot = tf.summary.scalar('d_loss', d_loss)
+    summ_d_loss = tf.summary.merge([summ_d_loss1, summ_d_loss2, summ_d_loss3, summ_d_loss_tot])
+
     g_loss = tl.cost.sigmoid_cross_entropy(disc_fake_image_logits, tf.ones_like(disc_fake_image_logits), name='g')
+    summ_g_loss = tf.summary.scalar('g_loss', g_loss)
 
     ####======================== DEFINE TRAIN OPTS ==============================###
     lr = 0.0002
@@ -140,6 +148,8 @@ if __name__ == '__main__':
 
     with tf.variable_scope('learning_rate'):
         lr_v = tf.Variable(lr, trainable=False)
+        summ_lr_v = tf.summary.scalar('lr_v', lr_v)
+
     d_optim = tf.train.AdamOptimizer(lr_v, beta1=beta1).minimize(d_loss, var_list=d_vars)
     g_optim = tf.train.AdamOptimizer(lr_v, beta1=beta1).minimize(g_loss, var_list=g_vars)
     # e_optim = tf.train.AdamOptimizer(lr_v, beta1=beta1).minimize(e_loss, var_list=e_vars + c_vars)
@@ -152,6 +162,8 @@ if __name__ == '__main__':
     ###============================ TRAINING ====================================###
     sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
     tl.layers.initialize_global_variables(sess)
+
+    tb_writer = tf.summary.FileWriter('tb_logs/', sess.graph)
 
     # load the latest checkpoints
     net_rnn_name = os.path.join(save_dir, 'net_rnn.npz')
@@ -207,7 +219,8 @@ if __name__ == '__main__':
 
         if epoch != 0 and (epoch % decay_every == 0):
             new_lr_decay = lr_decay ** (epoch // decay_every)
-            sess.run(tf.assign(lr_v, lr * new_lr_decay))
+            _, summ = sess.run([tf.assign(lr_v, lr * new_lr_decay), summ_lr_v])
+            tb_writer.add_summary(summ)
             log = " ** new learning rate: %f" % (lr * new_lr_decay)
             print(log)
         elif epoch == 0:
@@ -251,16 +264,17 @@ if __name__ == '__main__':
 
             ## updates text-to-image mapping
             if epoch < 50:
-                errRNN, _ = sess.run([rnn_loss, rnn_optim], feed_dict={
+                errRNN, _, summ = sess.run([rnn_loss, rnn_optim, summ_rnn_loss], feed_dict={
                     t_real_image: b_real_images,
                     t_wrong_image: b_wrong_images,
                     t_real_caption: b_real_caption,
                     t_wrong_caption: b_wrong_caption})
+                tb_writer.add_summary(summ)
             else:
                 errRNN = 0
 
             ## updates D
-            errD, _ = sess.run([d_loss, d_optim], feed_dict={
+            errD, _, summ = sess.run([d_loss, d_optim, summ_d_loss], feed_dict={
                 t_real_image: b_real_images,
                 # t_wrong_image : b_wrong_images,
                 t_wrong_caption: b_wrong_caption,
@@ -268,11 +282,13 @@ if __name__ == '__main__':
                 t_real_pos: b_real_pos,
                 t_wrong_pos: b_wrong_pos,
                 t_z: b_z})
+            tb_writer.add_summary(summ)
             ## updates G
-            errG, _ = sess.run([g_loss, g_optim], feed_dict={
+            errG, _, summ = sess.run([g_loss, g_optim, summ_g_loss], feed_dict={
                 t_real_caption: b_real_caption,
                 t_real_pos: b_real_pos,
                 t_z: b_z})
+            tb_writer.add_summary(summ)
 
             print("Epoch: [%2d/%2d] [%4d/%4d] time: %4.4fs, d_loss: %.8f, g_loss: %.8f, rnn_loss: %.8f"
                   % (epoch, n_epoch, step, n_batch_epoch, time.time() - step_time, errD, errG, errRNN))
