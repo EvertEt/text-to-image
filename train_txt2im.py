@@ -19,17 +19,19 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('dataset', type=str, default='102flowers', help='102flowers | birds')
+    parser.add_argument('id', type=str, default='000', help='id')
 
     args = parser.parse_args()
 
     dataset = args.dataset
+    id = args.id
 
     logger = logging.getLogger()
 
 
     def make_gif():
         import imageio
-        filenames = tl.files.load_file_list('samples/step1_gan-cls_' + dataset, regx='^train_\d+0\.png', printable=False)
+        filenames = tl.files.load_file_list('samples/step1_gan-cls_' + dataset + id, regx='^train_\d+0\.png', printable=False)
         with imageio.get_writer('train.gif', mode='I', fps=0.1) as writer:
             for filename in filenames:
                 image = imageio.imread('samples/step1_gan-cls_' + dataset + '/' + filename)
@@ -80,8 +82,8 @@ if __name__ == '__main__':
 
     ni = int(np.ceil(np.sqrt(batch_size)))
 
-    tl.files.exists_or_mkdir('samples/step1_gan-cls_' + dataset)
-    save_dir = 'checkpoint_' + dataset
+    tl.files.exists_or_mkdir('samples/step1_gan-cls_' + dataset + id)
+    save_dir = 'checkpoint_' + dataset + id
     tl.files.exists_or_mkdir(save_dir)
 
     ###======================== DEFINE MODEL ===================================###
@@ -301,7 +303,7 @@ if __name__ == '__main__':
                 t_z: sample_seed})
 
             # img_gen = threading_data(img_gen, prepro_img, mode='rescale')
-            save_images(img_gen, [ni, ni], 'samples/step1_gan-cls_' + dataset + '/train_{:02d}.png'.format(epoch))
+            save_images(img_gen, [ni, ni], 'samples/step1_gan-cls_' + dataset + id + '/train_{:02d}.png'.format(epoch))
 
         ## save model
         if (epoch != 0) and (epoch % 10) == 0:
