@@ -165,7 +165,7 @@ if __name__ == '__main__':
     sess = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
     tl.layers.initialize_global_variables(sess)
 
-    tb_writer = tf.summary.FileWriter('tb_logs/', sess.graph)
+    tb_writer = tf.summary.FileWriter('tb_logs/' + dataset + id + '/', sess.graph)
 
     # load the latest checkpoints
     net_rnn_name = os.path.join(save_dir, 'net_rnn.npz')
