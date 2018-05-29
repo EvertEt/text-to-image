@@ -211,7 +211,7 @@ if __name__ == '__main__':
         # print(sample_sentence[i])
     sample_sentence = tl.prepro.pad_sequences(sample_sentence, padding='post')
 
-    sample_pos = [[15, 15] for _ in range(batch_size)]
+    sample_pos = [[0.2, 0.2] for _ in range(sample_size)]
 
     n_epoch = 600
     print_freq = 1
@@ -285,6 +285,7 @@ if __name__ == '__main__':
                 t_wrong_pos: b_wrong_pos,
                 t_z: b_z})
             tb_writer.add_summary(summ)
+
             ## updates G
             errG, _, summ = sess.run([g_loss, g_optim, summ_g_loss], feed_dict={
                 t_real_caption: b_real_caption,
