@@ -222,7 +222,7 @@ if __name__ == '__main__':
         if epoch != 0 and (epoch % decay_every == 0):
             new_lr_decay = lr_decay ** (epoch // decay_every)
             _, summ = sess.run([tf.assign(lr_v, lr * new_lr_decay), summ_lr_v])
-            tb_writer.add_summary(summ)
+            tb_writer.add_summary(summ, epoch)
             log = " ** new learning rate: %f" % (lr * new_lr_decay)
             print(log)
         elif epoch == 0:
@@ -271,7 +271,7 @@ if __name__ == '__main__':
                     t_wrong_image: b_wrong_images,
                     t_real_caption: b_real_caption,
                     t_wrong_caption: b_wrong_caption})
-                tb_writer.add_summary(summ)
+                tb_writer.add_summary(summ, epoch)
             else:
                 errRNN = 0
 
@@ -284,14 +284,14 @@ if __name__ == '__main__':
                 t_real_pos: b_real_pos,
                 t_wrong_pos: b_wrong_pos,
                 t_z: b_z})
-            tb_writer.add_summary(summ)
+            tb_writer.add_summary(summ, epoch)
 
             ## updates G
             errG, _, summ = sess.run([g_loss, g_optim, summ_g_loss], feed_dict={
                 t_real_caption: b_real_caption,
                 t_real_pos: b_real_pos,
                 t_z: b_z})
-            tb_writer.add_summary(summ)
+            tb_writer.add_summary(summ, epoch)
 
             print("Epoch: [%2d/%2d] [%4d/%4d] time: %4.4fs, d_loss: %.8f, g_loss: %.8f, rnn_loss: %.8f"
                   % (epoch, n_epoch, step, n_batch_epoch, time.time() - step_time, errD, errG, errRNN))
