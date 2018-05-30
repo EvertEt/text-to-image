@@ -65,13 +65,14 @@ if __name__ == '__main__':
         print('Opened Caption')
         captions_ids_train, captions_ids_test = pickle.load(f)
     print('Loaded Caption')
-    if dataset != 'birds':
-        print('WARNING: loading bb for non-bird dataset!!!')
-    print('Opening BB')
-    with open('_bb_' + dataset + '.pickle', 'rb') as f:
-        print('Opened BB')
-        bb_train, bb_test = pickle.load(f)
-    print('Loaded BB')
+    if dataset == 'birds':
+        print('Opening BB')
+        with open('_bb_' + dataset + '.pickle', 'rb') as f:
+            print('Opened BB')
+            bb_train, bb_test = pickle.load(f)
+        print('Loaded BB')
+    else:
+        bb_train, bb_test = [], []
     print('Loading Done')
     # images_train_256 = np.array(images_train_256)
     # images_test_256 = np.array(images_test_256)
@@ -241,7 +242,7 @@ if __name__ == '__main__':
             b_real_images = images_train[rounded_idexs]
 
             ## get real bb
-            b_real_pos = bb_train[rounded_idexs]
+            b_real_pos = bb_train[rounded_idexs] if dataset == 'birds' else [[32, 32, 20, 20] for _ in range(len(rounded_idexs))]
             b_real_pos = list(map(get_center, b_real_pos))
 
             ## get wrong caption
@@ -254,7 +255,7 @@ if __name__ == '__main__':
             b_wrong_images = images_train[idexs2]
 
             ## get wrong bb
-            b_wrong_pos = bb_train[idexs2]
+            b_wrong_pos = bb_train[idexs2] if dataset == 'birds' else [[32, 32, 20, 20] for _ in range(len(idexs2))]
             b_wrong_pos = list(map(get_center, b_wrong_pos))
 
             ## get noise

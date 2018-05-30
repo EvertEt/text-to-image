@@ -3,6 +3,7 @@
 """ GAN-CLS """
 import logging
 import pickle
+import time
 
 import nltk
 
@@ -65,7 +66,7 @@ if __name__ == '__main__':
 
     if not load_and_assign_npz(sess=sess, name=net_rnn_name, model=net_rnn):
         exit(1)
-    
+
     if not load_and_assign_npz(sess=sess, name=net_g_name, model=net_g):
         exit(1)
 
@@ -105,4 +106,4 @@ if __name__ == '__main__':
         t_real_pos: sample_pos,
         t_z: sample_seed})
 
-    save_images(img_gen, [ni, ni], 'gen/gan-cls_' + dataset + id + '/gen.png')
+    save_images(img_gen, [ni, ni], 'gen/gen_' + dataset + id + +str(int(time.time())) + '.png')
