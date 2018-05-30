@@ -106,4 +106,4 @@ if __name__ == '__main__':
         t_real_pos: sample_pos,
         t_z: sample_seed})
 
-    save_images(img_gen, [ni, ni], 'gen/gen_' + dataset + id + +str(int(time.time())) + '.png')
+    save_images(img_gen, [ni, ni], 'gen/gen_' + dataset + id + str(int(time.time())) + '.png')
