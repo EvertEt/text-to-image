@@ -212,7 +212,7 @@ if __name__ == '__main__':
         # print(sample_sentence[i])
     sample_sentence = tl.prepro.pad_sequences(sample_sentence, padding='post')
 
-    sample_pos = [[0.2, 0.2] for _ in range(sample_size)]
+    sample_pos = [[0.2, 0.8, 0.2, 0.2] for _ in range(sample_size)]
 
     n_epoch = 600
     print_freq = 1
