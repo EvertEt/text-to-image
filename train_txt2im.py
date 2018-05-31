@@ -90,8 +90,8 @@ if __name__ == '__main__':
     ###======================== DEFINE MODEL ===================================###
     t_real_image = tf.placeholder('float32', [batch_size, image_size, image_size, 3], name='real_image')
     t_wrong_image = tf.placeholder('float32', [batch_size, image_size, image_size, 3], name='wrong_image')
-    t_real_pos = tf.placeholder('float32', [batch_size, 2], name='real_pos')
-    t_wrong_pos = tf.placeholder('float32', [batch_size, 2], name='wrong_pos')
+    t_real_pos = tf.placeholder('float32', [batch_size, 4], name='real_pos')
+    t_wrong_pos = tf.placeholder('float32', [batch_size, 4], name='wrong_pos')
     t_real_caption = tf.placeholder(dtype=tf.int64, shape=[batch_size, None], name='real_caption_input')
     t_wrong_caption = tf.placeholder(dtype=tf.int64, shape=[batch_size, None], name='wrong_caption_input')
     t_z = tf.placeholder(tf.float32, [batch_size, z_dim], name='z_noise')
