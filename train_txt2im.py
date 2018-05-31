@@ -243,7 +243,7 @@ if __name__ == '__main__':
 
             ## get real bb
             b_real_pos = bb_train[rounded_idexs] if dataset == 'birds' else [[32, 32, 20, 20] for _ in range(len(rounded_idexs))]
-            b_real_pos = list(map(get_center, b_real_pos))
+            # b_real_pos = list(map(get_center, b_real_pos))
 
             ## get wrong caption
             idexs = get_random_int(0, n_captions_train - 1, batch_size)
@@ -256,7 +256,7 @@ if __name__ == '__main__':
 
             ## get wrong bb
             b_wrong_pos = bb_train[idexs2] if dataset == 'birds' else [[32, 32, 20, 20] for _ in range(len(idexs2))]
-            b_wrong_pos = list(map(get_center, b_wrong_pos))
+            # b_wrong_pos = list(map(get_center, b_wrong_pos))
 
             ## get noise
             b_z = np.random.normal(loc=0.0, scale=1.0, size=(sample_size, z_dim)).astype(np.float32)

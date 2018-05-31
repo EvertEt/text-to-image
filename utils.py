@@ -92,30 +92,38 @@ def prepro_img(data, img_size=64):
     # flip, rotate, crop, resize : https://github.com/reedscot/icml2016/blob/master/data/donkey_folder_coco.lua
     # flip : https://github.com/paarthneekhara/text-to-image/blob/master/Utils/image_processing.py
 
-    x, c = data
+    x, bb = data
 
     if np.random.choice([True, False]):
         x = flip_axis(x, axis=1)
-        c = [img_size - c[0], c[1]]
+        bb[0] = img_size - (bb[0] + bb[2])
 
     r = np.random.choice(32) - 16
     x = rotation(x, rg=r, fill_mode='nearest')
-    c = rotate([img_size / 2, img_size / 2], c, r)
+    c = rotate([img_size / 2, img_size / 2], [bb[0], bb[1]], r)
+    bb[0] = c[0]
+    bb[1] = c[1]
 
     x = imresize(x, size=[img_size + 15, img_size + 15], interp='bilinear')
     s = (img_size + 15) / img_size
-    c = [c[0] * s, c[1] * s]
+    bb = [bb[0] * s, bb[1] * s, bb[2] * s, bb[3] * s]
 
-    x, _, new_coords = obj_box_crop(x, coords=[[c[0], c[1], 20, 20]], classes=[0], wrg=img_size, hrg=img_size, is_random=True, is_center=True)
+    x, _, new_coords = obj_box_crop(x, coords=[bb], classes=[0], wrg=img_size, hrg=img_size, is_random=True, is_center=True)
     if len(new_coords) == 1:
-        c = [new_coords[0][0], new_coords[0][1]]
+        bb = new_coords[0]
 
     x = x / (255. / 2.)
     x = x - 1.
 
-    c = [c[0] / img_size, c[1] / img_size]
+    bb = [bb[0] / img_size, bb[1] / img_size, bb[2] / img_size, bb[3] / img_size]
 
-    return x, c
+    return x, bb
+
+
+def cart2pol(x, y):
+    rho = np.sqrt(x ** 2 + y ** 2)
+    phi = np.arctan2(y, x)
+    return (rho, phi)
 
 
 def rotate(origin, point, angle):
