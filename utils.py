@@ -113,7 +113,9 @@ def prepro_img(data, img_size=64):
     x = x / (255. / 2.)
     x = x - 1.
 
-    c = [c[0] / img_size, c[1] / img_size]
+    rho, phi = cart2pol(c[0], c[1])
+
+    c = [rho / 91, phi / 90]
 
     return x, c
 
@@ -145,6 +147,12 @@ def combine_and_save_image_sets(image_sets, directory):
         combined_image = np.concatenate(combined_image, axis=1)
 
         scipy.misc.imsave(os.path.join(directory, 'combined_{}.jpg'.format(i)), combined_image)
+
+
+def cart2pol(x, y):
+    rho = np.sqrt(x ** 2 + y ** 2)
+    phi = np.arctan2(y, x)
+    return (rho, phi)
 
 
 def get_center(coords):

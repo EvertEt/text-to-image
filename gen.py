@@ -99,7 +99,16 @@ if __name__ == '__main__':
         sample_sentence[i] = [vocab.word_to_id(word) for word in nltk.tokenize.word_tokenize(sentence)] + [vocab.end_id]  # add END_ID
     sample_sentence = tl.prepro.pad_sequences(sample_sentence, padding='post')
 
-    sample_pos = [[0.2, 0.2] for _ in range(sample_size)]
+    sample_pos = np.tile([
+        [0.25, 0.5],
+        [0.25, 0.75],
+        [0.5, 0.75],
+        [0.75, 0.75],
+        [0.75, 0.5],
+        [0.75, 0.25],
+        [0.5, 0.25],
+        [0.25, 0.25]
+    ], [8, 1])
 
     img_gen, rnn_out = sess.run([net_g.outputs, net_rnn.outputs], feed_dict={
         t_real_caption: sample_sentence,
